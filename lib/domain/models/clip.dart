@@ -1,0 +1,187 @@
+import 'media_asset.dart';
+
+enum ClipKind { video, audio, image, text }
+
+extension MediaKindClip on MediaKind {
+  ClipKind get clipKind => switch (this) {
+        MediaKind.video => ClipKind.video,
+        MediaKind.audio => ClipKind.audio,
+        MediaKind.image => ClipKind.image,
+      };
+}
+
+/// Styling for a text clip. Position is the normalised centre of the text.
+class TextOverlay {
+  const TextOverlay({
+    this.content = 'Your text',
+    this.fontSize = 64,
+    this.color = 0xFFFFFFFF,
+    this.x = 0.5,
+    this.y = 0.85,
+  });
+
+  final String content;
+
+  /// In pixels at the project's canvas height.
+  final double fontSize;
+  final int color;
+  final double x;
+  final double y;
+
+  TextOverlay copyWith({
+    String? content,
+    double? fontSize,
+    int? color,
+    double? x,
+    double? y,
+  }) =>
+      TextOverlay(
+        content: content ?? this.content,
+        fontSize: fontSize ?? this.fontSize,
+        color: color ?? this.color,
+        x: x ?? this.x,
+        y: y ?? this.y,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'content': content,
+        'fontSize': fontSize,
+        'color': color,
+        'x': x,
+        'y': y,
+      };
+
+  factory TextOverlay.fromJson(Map<String, dynamic> json) => TextOverlay(
+        content: json['content'] as String,
+        fontSize: (json['fontSize'] as num).toDouble(),
+        color: json['color'] as int,
+        x: (json['x'] as num).toDouble(),
+        y: (json['y'] as num).toDouble(),
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TextOverlay &&
+      other.content == content &&
+      other.fontSize == fontSize &&
+      other.color == color &&
+      other.x == x &&
+      other.y == y;
+
+  @override
+  int get hashCode => Object.hash(content, fontSize, color, x, y);
+}
+
+/// A piece of media (or text) placed on a track.
+///
+/// [duration] is the length **on the timeline**. The slice of source media it
+/// consumes is `duration * speed`, starting at [sourceStart].
+class TimelineClip {
+  const TimelineClip({
+    required this.id,
+    required this.kind,
+    required this.start,
+    required this.duration,
+    this.assetId,
+    this.sourceStart = Duration.zero,
+    this.speed = 1.0,
+    this.volume = 1.0,
+    this.opacity = 1.0,
+    this.text,
+  });
+
+  final String id;
+  final ClipKind kind;
+  final String? assetId;
+  final Duration start;
+  final Duration duration;
+  final Duration sourceStart;
+  final double speed;
+  final double volume;
+  final double opacity;
+  final TextOverlay? text;
+
+  Duration get end => start + duration;
+
+  bool get isTimeBased => kind == ClipKind.video || kind == ClipKind.audio;
+
+  Duration get sourceDuration =>
+      Duration(microseconds: (duration.inMicroseconds * speed).round());
+
+  Duration get sourceEnd => sourceStart + sourceDuration;
+
+  bool containsTime(Duration t) => t >= start && t < end;
+
+  /// Position inside the source media that corresponds to timeline time [t].
+  Duration sourcePositionAt(Duration t) => sourceStart +
+      Duration(microseconds: ((t - start).inMicroseconds * speed).round());
+
+  TimelineClip copyWith({
+    String? id,
+    Duration? start,
+    Duration? duration,
+    Duration? sourceStart,
+    double? speed,
+    double? volume,
+    double? opacity,
+    TextOverlay? text,
+  }) =>
+      TimelineClip(
+        id: id ?? this.id,
+        kind: kind,
+        assetId: assetId,
+        start: start ?? this.start,
+        duration: duration ?? this.duration,
+        sourceStart: sourceStart ?? this.sourceStart,
+        speed: speed ?? this.speed,
+        volume: volume ?? this.volume,
+        opacity: opacity ?? this.opacity,
+        text: text ?? this.text,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'kind': kind.name,
+        'assetId': assetId,
+        'start': start.inMicroseconds,
+        'duration': duration.inMicroseconds,
+        'sourceStart': sourceStart.inMicroseconds,
+        'speed': speed,
+        'volume': volume,
+        'opacity': opacity,
+        'text': text?.toJson(),
+      };
+
+  factory TimelineClip.fromJson(Map<String, dynamic> json) => TimelineClip(
+        id: json['id'] as String,
+        kind: ClipKind.values.byName(json['kind'] as String),
+        assetId: json['assetId'] as String?,
+        start: Duration(microseconds: json['start'] as int),
+        duration: Duration(microseconds: json['duration'] as int),
+        sourceStart: Duration(microseconds: json['sourceStart'] as int),
+        speed: (json['speed'] as num).toDouble(),
+        volume: (json['volume'] as num).toDouble(),
+        opacity: (json['opacity'] as num).toDouble(),
+        text: json['text'] == null
+            ? null
+            : TextOverlay.fromJson(json['text'] as Map<String, dynamic>),
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is TimelineClip &&
+      other.id == id &&
+      other.kind == kind &&
+      other.assetId == assetId &&
+      other.start == start &&
+      other.duration == duration &&
+      other.sourceStart == sourceStart &&
+      other.speed == speed &&
+      other.volume == volume &&
+      other.opacity == opacity &&
+      other.text == text;
+
+  @override
+  int get hashCode => Object.hash(
+      id, kind, assetId, start, duration, sourceStart, speed, volume, opacity, text);
+}
