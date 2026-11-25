@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/editor_actions.dart';
 import '../../../application/media_import_controller.dart';
+import '../../../application/media_status.dart';
 import '../../../application/project_controller.dart';
 import '../../../application/thumbnails.dart';
 import '../../../core/theme/app_theme.dart';
@@ -95,6 +96,8 @@ class _MediaTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tile = _TileContent(
       asset: asset,
+      missing: ref.watch(assetMissingProvider(asset)),
+      onRelink: () => ref.read(mediaImportControllerProvider.notifier).relink(asset),
       onAdd: () => ref.read(editorActionsProvider).addAsset(asset),
       onRemove: () =>
           ref.read(projectControllerProvider.notifier).removeAsset(asset.id),
@@ -128,8 +131,12 @@ class _TileContent extends ConsumerWidget {
     required this.asset,
     required this.onAdd,
     required this.onRemove,
+    required this.missing,
+    required this.onRelink,
   });
 
+  final bool missing;
+  final VoidCallback onRelink;
   final MediaAsset asset;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
@@ -193,11 +200,19 @@ class _TileContent extends ConsumerWidget {
               ],
             ),
           ),
-          IconActionButton(
-            icon: Icons.add_circle_outline,
-            tooltip: 'Add to timeline at playhead',
-            onPressed: onAdd,
-          ),
+          if (missing)
+            IconActionButton(
+              icon: Icons.link_off,
+              tooltip: 'File not found — tap to relink',
+              selected: true,
+              onPressed: onRelink,
+            )
+          else
+            IconActionButton(
+              icon: Icons.add_circle_outline,
+              tooltip: 'Add to timeline at playhead',
+              onPressed: onAdd,
+            ),
           IconActionButton(
             icon: Icons.delete_outline,
             tooltip: 'Remove from project',

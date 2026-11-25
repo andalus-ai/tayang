@@ -16,10 +16,11 @@ class ClipTransform extends StatelessWidget {
       builder: (context, box) => Transform(
         alignment: Alignment.center,
         transform: Matrix4.translationValues(
-          clip.offsetX * box.maxWidth,
-          clip.offsetY * box.maxHeight,
-          0,
-        )..scale(clip.scale, clip.scale, 1.0),
+              clip.offsetX * box.maxWidth,
+              clip.offsetY * box.maxHeight,
+              0,
+            ) *
+            Matrix4.diagonal3Values(clip.scale, clip.scale, 1.0),
         child: child,
       ),
     );

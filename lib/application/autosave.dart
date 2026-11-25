@@ -17,3 +17,8 @@ final autosaveProvider = Provider<void>((ref) {
   });
   ref.onDispose(() => debounce?.cancel());
 });
+
+/// Saves immediately (used when the app goes to the background).
+final autosaveFlushProvider = Provider<Future<void> Function()>(
+  (ref) => () => ref.read(projectRepositoryProvider).save(ref.read(projectProvider)),
+);

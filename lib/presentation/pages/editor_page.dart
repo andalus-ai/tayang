@@ -10,13 +10,41 @@ import '../widgets/toolbar/editor_top_bar.dart';
 import '../widgets/toolbar/transport_bar.dart';
 import 'editor_shortcuts.dart';
 
-class EditorPage extends ConsumerWidget {
+class EditorPage extends ConsumerStatefulWidget {
   const EditorPage({super.key});
 
+  @override
+  ConsumerState<EditorPage> createState() => _EditorPageState();
+}
+
+class _EditorPageState extends ConsumerState<EditorPage> {
   static const _compactBreakpoint = 900.0;
 
+  late final AppLifecycleListener _lifecycle;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    // Don't lose edits if the OS kills the app right after it's backgrounded.
+    _lifecycle = AppLifecycleListener(
+      onStateChange: (state) {
+        if (state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.hidden ||
+            state == AppLifecycleState.paused) {
+          ref.read(autosaveFlushProvider)();
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(autosaveProvider);
 
     return EditorShortcuts(

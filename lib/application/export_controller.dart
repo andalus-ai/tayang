@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/export/video_exporter.dart';
+import '../domain/models/media_asset.dart';
 import 'di.dart';
 import 'playback_controller.dart';
 import 'project_controller.dart';
@@ -40,6 +41,22 @@ class ExportController extends Notifier<ExportState> {
       state = const ExportState(
         status: ExportStatus.failed,
         error: 'The timeline is empty — add some clips first.',
+      );
+      return;
+    }
+
+    final exists = ref.read(fileExistsProvider);
+    final missing = <String>{
+      for (final track in project.tracks)
+        for (final clip in track.clips)
+          if (project.assetById(clip.assetId) case final MediaAsset asset)
+            if (!exists(asset.path)) asset.name,
+    };
+    if (missing.isNotEmpty) {
+      state = ExportState(
+        status: ExportStatus.failed,
+        error: 'Some media files are missing. Relink them in the Media panel:\n'
+            '${missing.join('\n')}',
       );
       return;
     }

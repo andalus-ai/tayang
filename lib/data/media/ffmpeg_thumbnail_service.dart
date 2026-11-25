@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../core/utils/stable_key.dart';
 import '../../domain/models/media_asset.dart';
 import '../../domain/services/thumbnail_service.dart';
 
@@ -17,16 +18,18 @@ class FfmpegThumbnailService implements ThumbnailService {
   final Future<Directory> Function() _cacheDir;
   final _inflight = <String, Future<String?>>{};
 
+  String _key(MediaAsset asset) => '${asset.id}_${stableKey(asset.path)}';
+
   @override
   Future<String?> thumbnail(MediaAsset asset) {
     if (asset.kind == MediaKind.audio) return Future.value(null);
-    return _inflight.putIfAbsent(asset.id, () => _create(asset));
+    return _inflight.putIfAbsent(_key(asset), () => _create(asset));
   }
 
   Future<String?> _create(MediaAsset asset) async {
     try {
       final dir = await _cacheDir();
-      final out = File(p.join(dir.path, '${asset.id}.jpg'));
+      final out = File(p.join(dir.path, '${_key(asset)}.jpg'));
       if (await out.exists()) return out.path;
 
       final seekSeconds = asset.kind == MediaKind.video

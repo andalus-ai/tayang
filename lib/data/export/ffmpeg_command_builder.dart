@@ -3,7 +3,6 @@ import '../../domain/models/clip.dart';
 import '../../domain/models/keyframes.dart';
 import '../../domain/models/media_asset.dart';
 import '../../domain/models/project.dart';
-import '../../domain/models/track.dart';
 
 /// Pure translation of a [Project] into FFmpeg arguments (no I/O → unit-testable).
 ///

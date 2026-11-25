@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tayang/data/export/ffmpeg_command_builder.dart';
 import 'package:tayang/domain/export/video_exporter.dart';
-import 'package:tayang/domain/models/clip.dart';
 import 'package:tayang/domain/models/history.dart';
 import 'package:tayang/domain/models/media_asset.dart';
 import 'package:tayang/domain/models/project.dart';

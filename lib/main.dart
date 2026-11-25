@@ -1,24 +1,40 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'application/di.dart';
+import 'data/logging/file_error_logger.dart';
 import 'data/repositories/json_project_repository.dart';
 import 'domain/models/project.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final logger = FileErrorLogger();
 
-  final repository = JsonProjectRepository();
-  final initial = await repository.loadLatest() ?? Project.empty();
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        initialProjectProvider.overrideWithValue(initial),
-        projectRepositoryProvider.overrideWithValue(repository),
-      ],
-      child: const TayangApp(),
-    ),
-  );
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      logger.log(details.exception, details.stack);
+    };
+    WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+      logger.log(error, stack);
+      return true;
+    };
+
+    final repository = JsonProjectRepository();
+    final initial = await repository.loadLatest() ?? Project.empty();
+
+    runApp(
+      ProviderScope(
+        overrides: [
+          initialProjectProvider.overrideWithValue(initial),
+          projectRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: const TayangApp(),
+      ),
+    );
+  }, logger.log);
 }

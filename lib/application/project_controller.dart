@@ -77,6 +77,9 @@ class ProjectController extends Notifier<History<Project>> {
   void addAssets(Iterable<MediaAsset> assets) =>
       _commit(assets.fold(_project, _editor.addAsset));
 
+  void relinkAsset(MediaAsset replacement) =>
+      _commit(_editor.relinkAsset(_project, replacement));
+
   void removeAsset(String assetId) =>
       _commit(_editor.removeAsset(_project, assetId));
 

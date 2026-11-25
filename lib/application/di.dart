@@ -28,6 +28,10 @@ import '../domain/services/waveform_service.dart';
 
 final initialProjectProvider = Provider<Project>((ref) => Project.empty());
 
+/// Injected so "does this file exist?" can be faked in tests.
+final fileExistsProvider =
+    Provider<bool Function(String path)>((ref) => (path) => File(path).existsSync());
+
 final timelineEditorProvider =
     Provider<TimelineEditor>((ref) => const TimelineEditor());
 

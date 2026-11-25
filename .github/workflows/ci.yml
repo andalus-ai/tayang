@@ -43,3 +43,35 @@ jobs:
           gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@report.md || true
       - name: Fail if analyze or tests failed
         run: test "$(cat analyze.code)" = 0 && test "$(cat test.code)" = 0
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build debug APK
+        run: |
+          set +e
+          flutter build apk --debug > build.txt 2>&1
+          echo $? > build.code
+      - name: Report as commit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          {
+            echo "### flutter build apk --debug (exit $(cat build.code 2>/dev/null))"
+            echo '```'; tail -c 30000 build.txt 2>/dev/null; echo '```'
+          } > build.md
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@build.md || true
+      - name: Fail if the build failed
+        run: test "$(cat build.code)" = 0

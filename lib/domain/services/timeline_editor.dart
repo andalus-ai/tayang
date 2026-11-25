@@ -26,6 +26,11 @@ class TimelineEditor {
   Project addAsset(Project p, MediaAsset asset) =>
       p.copyWith(assets: [...p.assets, asset]);
 
+  /// Points an existing asset id at a new file (clips keep referencing the id).
+  Project relinkAsset(Project p, MediaAsset replacement) => p.copyWith(
+        assets: [for (final a in p.assets) a.id == replacement.id ? replacement : a],
+      );
+
   /// Removes the asset and every clip that references it.
   Project removeAsset(Project p, String assetId) => p.copyWith(
         assets: [for (final a in p.assets) if (a.id != assetId) a],
