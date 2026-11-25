@@ -6,7 +6,7 @@ Timeline video editor in Flutter. State: `flutter_riverpod` (Notifier API, no co
     flutter create . --project-name tayang --org ai.andalus --platforms=android,ios,macos,windows,linux
     flutter pub get && flutter analyze && flutter test && flutter run
 
-Platform notes: Android needs `minSdkVersion 24`; iOS/macOS need a recent deployment target (see the
+Platform notes: Linux build needs `libjson-glib-dev` and FFmpeg dev libs (`libavcodec-dev` etc.) for the FFmpegKit plugin; at runtime Linux exports through the system `ffmpeg`. Android needs `minSdkVersion 24`; iOS/macOS need a recent deployment target (see the
 `ffmpeg_kit_flutter_new` docs). Linux uses the system `ffmpeg` + `ffprobe` on PATH.
 
 ## Architecture (dependencies point inward)
