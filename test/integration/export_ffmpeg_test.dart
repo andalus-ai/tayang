@@ -140,7 +140,9 @@ void main() {
       final types = [for (final s in info['streams'] as List) (s as Map)['codec_type']];
       expect(types, containsAll(['video', 'audio']));
       final duration = double.parse((info['format'] as Map)['duration'] as String);
-      expect(duration, closeTo(6.0, 0.4));
+      // Image clip defaults to 5s starting at 2s, so the project runs 7s.
+      expect(p.duration, const Duration(seconds: 7));
+      expect(duration, closeTo(7.0, 0.4));
     },
     skip: available ? false : 'ffmpeg/ffprobe not installed',
     timeout: const Timeout(Duration(minutes: 4)),
