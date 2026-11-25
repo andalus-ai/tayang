@@ -4,3 +4,6 @@ build/
 pubspec.lock
 *.iml
 .idea/
+
+.DS_Store
+pubspec.lock

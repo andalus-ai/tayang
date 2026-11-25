@@ -13,8 +13,6 @@ jobs:
         with:
           channel: stable
           cache: true
-      # The repo ships only lib/, test/ and pubspec; generate platform folders for CI.
-      - run: flutter create . --project-name tayang --platforms=android --org ai.andalus
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
