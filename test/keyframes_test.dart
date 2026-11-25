@@ -63,7 +63,8 @@ void main() {
     final cmd = const FfmpegCommandBuilder()
         .build(p, const ExportSettings(), outputPath: 'o.mp4')
         .join(' ');
-    expect(cmd, contains('geq='));
+    expect(cmd, contains('alphamerge'));
+    expect(cmd, isNot(contains("geq=r=")));
     expect(cmd, contains("volume='"));
     expect(cmd, contains('main_w'));
   });

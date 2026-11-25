@@ -17,6 +17,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      # Real ffmpeg so the export integration test runs end to end.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
       # Capture output so the report step can publish it (readable without log access).
       - name: Analyze
         run: |
