@@ -20,15 +20,20 @@ jobs:
       # Capture output so the report step can publish it (readable without log access).
       - name: Analyze
         run: |
-          flutter analyze --no-fatal-infos > analyze.txt 2>&1; echo $? > analyze.code; true
+          set +e
+          flutter analyze --no-fatal-infos > analyze.txt 2>&1
+          echo $? > analyze.code
       - name: Test
         run: |
-          flutter test > test.txt 2>&1; echo $? > test.code; true
+          set +e
+          flutter test > test.txt 2>&1
+          echo $? > test.code
       - name: Report as commit comment
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set +e
           {
             echo "### flutter analyze (exit $(cat analyze.code 2>/dev/null))"
             echo '```'; tail -c 28000 analyze.txt 2>/dev/null; echo '```'
