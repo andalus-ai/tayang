@@ -1,0 +1,26 @@
+name: tayang
+description: A modular, timeline-based video editor built with Flutter and Riverpod (no codegen, no freezed).
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  video_player: ^2.9.2
+  file_picker: ^8.1.6
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  # Full-GPL build: includes libx264 + drawtext (needed for export). Android / iOS / macOS / Windows.
+  ffmpeg_kit_flutter_new: ^4.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
