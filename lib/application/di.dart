@@ -9,6 +9,7 @@ import '../data/export/ffmpeg_runners.dart';
 import '../data/export/ffmpeg_video_exporter.dart';
 import '../data/export/process_video_exporter.dart';
 import '../data/media/ffmpeg_thumbnail_service.dart';
+import '../data/media/ffmpeg_waveform_service.dart';
 import '../data/media/ffprobe_media_probe.dart';
 import '../data/media/process_media_probe.dart';
 import '../data/playback/player_pool.dart';
@@ -20,6 +21,7 @@ import '../domain/repositories/media_repository.dart';
 import '../domain/repositories/project_repository.dart';
 import '../domain/services/thumbnail_service.dart';
 import '../domain/services/timeline_editor.dart';
+import '../domain/services/waveform_service.dart';
 
 /// Composition root: the ONLY place that binds abstractions to implementations.
 /// Override any of these in `main()` or in tests.
@@ -65,3 +67,13 @@ final playerPoolProvider = Provider<PlayerPool>((ref) {
   ref.onDispose(pool.dispose);
   return pool;
 });
+
+final waveformServiceProvider = Provider<WaveformService>(
+  (ref) => FfmpegWaveformService(
+    run: _useSystemFfmpeg ? processRunner() : runWithFfmpegKit,
+    cacheDir: () async {
+      final tmp = await getTemporaryDirectory();
+      return Directory(p.join(tmp.path, 'tayang_thumbs')).create(recursive: true);
+    },
+  ),
+);

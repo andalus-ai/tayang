@@ -143,6 +143,9 @@ class _ClipBody extends ConsumerWidget {
     final thumbnail = asset == null || asset!.kind == MediaKind.audio
         ? null
         : ref.watch(thumbnailPathProvider(asset!)).valueOrNull;
+    final wave = asset != null && clip.kind == ClipKind.audio
+        ? ref.watch(waveformPathProvider(asset!)).valueOrNull
+        : null;
     return Container(
       clipBehavior: Clip.hardEdge,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -165,7 +168,10 @@ class _ClipBody extends ConsumerWidget {
           width: selected ? 2 : 1,
         ),
       ),
-      child: Row(
+      child: Stack(
+        children: [
+          if (wave != null) Positioned.fill(child: _Waveform(path: wave, clip: clip, asset: asset!)),
+          Row(
         children: [
           Expanded(
             child: Text(
@@ -186,6 +192,51 @@ class _ClipBody extends ConsumerWidget {
             ),
         ],
       ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Draws only the slice of the asset's waveform that this clip plays.
+class _Waveform extends StatelessWidget {
+  const _Waveform({required this.path, required this.clip, required this.asset});
+
+  final String path;
+  final TimelineClip clip;
+  final MediaAsset asset;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = asset.duration.inMicroseconds;
+    final slice = clip.sourceDuration.inMicroseconds;
+    if (total <= 0 || slice <= 0) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final fullWidth = box.maxWidth * total / slice;
+        final offset = box.maxWidth * clip.sourceStart.inMicroseconds / slice;
+        return ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            minWidth: fullWidth,
+            maxWidth: fullWidth,
+            child: Transform.translate(
+              offset: Offset(-offset, 0),
+              child: Opacity(
+                opacity: 0.8,
+                child: Image.file(
+                  File(path),
+                  width: fullWidth,
+                  height: box.maxHeight,
+                  fit: BoxFit.fill,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

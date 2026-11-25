@@ -7,3 +7,8 @@ import 'di.dart';
 final thumbnailPathProvider = FutureProvider.family<String?, MediaAsset>(
   (ref, asset) => ref.watch(thumbnailServiceProvider).thumbnail(asset),
 );
+
+/// Waveform image path for an asset with audio (null while unavailable).
+final waveformPathProvider = FutureProvider.family<String?, MediaAsset>(
+  (ref, asset) => ref.watch(waveformServiceProvider).waveform(asset),
+);
