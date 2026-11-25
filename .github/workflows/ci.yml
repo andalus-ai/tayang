@@ -77,3 +77,51 @@ jobs:
           gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@build.md || true
       - name: Fail if the build failed
         run: test "$(cat build.code)" = 0
+
+  platform-builds:
+    name: build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: android-release, os: ubuntu-latest, cmd: 'flutter build apk --release' }
+          - { name: ios, os: macos-latest, cmd: 'flutter build ios --debug --no-codesign' }
+          - { name: macos, os: macos-latest, cmd: 'flutter build macos --debug' }
+          - { name: windows, os: windows-latest, cmd: 'flutter build windows --debug' }
+          - { name: linux, os: ubuntu-latest, cmd: 'flutter build linux --debug', linux: true }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Linux build dependencies
+        if: matrix.linux
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - run: flutter pub get
+      - name: Build
+        run: |
+          set +e
+          ${{ matrix.cmd }} > build.txt 2>&1
+          echo $? > build.code
+      - name: Report as commit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          {
+            echo "### build ${{ matrix.name }} (exit $(cat build.code 2>/dev/null))"
+            echo '```'; tail -c 14000 build.txt 2>/dev/null; echo '```'
+          } > build.md
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@build.md || true
+      - name: Fail if the build failed
+        run: test "$(cat build.code)" = 0
