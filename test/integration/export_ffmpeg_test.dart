@@ -149,6 +149,32 @@ void main() {
   );
 
   test(
+    'crossfade between two clips exports with the overlap removed from the length',
+    () async {
+      final video = MediaAsset(
+        id: 'v', path: videoPath, name: 'v',
+        kind: MediaKind.video, duration: const Duration(seconds: 4),
+      );
+      var p = const Project(
+        id: 'p', name: 'it3',
+        tracks: [Track(id: 'v1', kind: TrackKind.video, name: 'V')],
+      );
+      p = editor.addAsset(p, video);
+      p = editor.addClipFromAsset(p, video, clipId: 'c1', newTrackId: 'x'); // 0-4s
+      p = editor.addClipFromAsset(p, video, clipId: 'c2', newTrackId: 'x'); // 4-8s
+      p = editor.addCrossfade(p, 'c1', const Duration(seconds: 1));
+      expect(p.duration, const Duration(seconds: 7));
+
+      final result = await run(p, 'xfade');
+      expect(result, isA<ExportDone>(), reason: result is ExportFailed ? result.message : null);
+      final info = await _probe('${dir.path}/xfade.mp4');
+      expect(double.parse((info['format'] as Map)['duration'] as String), closeTo(7.0, 0.3));
+    },
+    skip: available ? false : 'ffmpeg/ffprobe not installed',
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  test(
     'speed change and split export to the expected length',
     () async {
       final video = MediaAsset(

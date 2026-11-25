@@ -59,9 +59,23 @@ class _VisualLayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final clip = ref.watch(activeVisualClipProvider);
-    if (clip == null) return const SizedBox.expand();
+    final active = ref.watch(activeVisualClipsProvider);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        for (final clip in active.clips) _ClipLayer(key: ValueKey(clip.id), clip: clip),
+      ],
+    );
+  }
+}
 
+class _ClipLayer extends ConsumerWidget {
+  const _ClipLayer({super.key, required this.clip});
+
+  final TimelineClip clip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final asset = ref.watch(projectProvider.select((p) => p.assetById(clip.assetId)));
     if (asset == null) return const SizedBox.expand();
 
@@ -84,12 +98,13 @@ class _VisualLayer extends ConsumerWidget {
 
     final muted =
         ref.watch(projectProvider.select((p) => p.trackOfClip(clip.id)?.isMuted ?? false));
+    final audioFadeOut = ref.watch(projectProvider.select((p) => p.crossfadeOutOf(clip)));
     return ClipPlayer(
-      key: ValueKey(clip.id),
       clip: clip,
       asset: asset,
       muted: muted,
       showVideo: true,
+      audioFadeOut: audioFadeOut,
     );
   }
 }
@@ -151,7 +166,7 @@ class _AudioLayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final project = ref.watch(projectProvider);
     final position = ref.watch(playbackProvider.select((s) => s.position));
-    final visibleId = ref.watch(activeVisualClipProvider.select((c) => c?.id));
+    final visibleIds = {for (final c in ref.watch(activeVisualClipsProvider).clips) c.id};
 
     final players = <Widget>[];
     for (final track in project.tracks) {
@@ -159,7 +174,7 @@ class _AudioLayer extends ConsumerWidget {
       for (final clip in track.clips) {
         if (!clip.containsTime(position)) continue;
         if (clip.kind != ClipKind.audio && clip.kind != ClipKind.video) continue;
-        if (clip.kind == ClipKind.video && clip.id == visibleId) continue;
+        if (clip.kind == ClipKind.video && visibleIds.contains(clip.id)) continue;
         final MediaAsset? asset = project.assetById(clip.assetId);
         if (asset == null || !asset.hasAudio) continue;
         players.add(
@@ -169,6 +184,7 @@ class _AudioLayer extends ConsumerWidget {
             asset: asset,
             muted: false,
             showVideo: false,
+            audioFadeOut: project.crossfadeOutOf(clip),
           ),
         );
       }

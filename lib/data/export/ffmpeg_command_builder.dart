@@ -1,3 +1,4 @@
+import '../../core/utils/duration_x.dart';
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/clip.dart';
 import '../../domain/models/keyframes.dart';
@@ -115,13 +116,15 @@ class FfmpegCommandBuilder {
         }
 
         if (wantsAudio) {
+          // A clip crossfading into the next one also fades its audio out.
+          final audioFadeOut = maxDuration(clip.fadeOut, project.crossfadeOutOf(clip));
           final chain = <String>[
             'aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo',
             'asetpts=PTS-STARTPTS',
             ..._atempo(clip.speed),
             if (clip.fadeIn > Duration.zero) 'afade=t=in:st=0:d=${_s(clip.fadeIn)}',
-            if (clip.fadeOut > Duration.zero)
-              'afade=t=out:st=${_s(clip.duration - clip.fadeOut)}:d=${_s(clip.fadeOut)}',
+            if (audioFadeOut > Duration.zero)
+              'afade=t=out:st=${_s(clip.duration - audioFadeOut)}:d=${_s(audioFadeOut)}',
             if (clip.volumeKeys.isNotEmpty)
               "volume='${_lerp(clip.volumeKeys, Duration.zero, 't')}':eval=frame"
             else

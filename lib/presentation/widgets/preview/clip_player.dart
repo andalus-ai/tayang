@@ -4,6 +4,8 @@ import 'package:video_player/video_player.dart';
 
 import '../../../application/di.dart';
 import '../../../application/playback_controller.dart';
+import '../../../core/utils/duration_x.dart';
+import '../../../data/playback/player_pool.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
 import 'clip_transform.dart';
@@ -20,12 +22,16 @@ class ClipPlayer extends ConsumerStatefulWidget {
     required this.asset,
     required this.muted,
     required this.showVideo,
+    this.audioFadeOut = Duration.zero,
   });
 
   final TimelineClip clip;
   final MediaAsset asset;
   final bool muted;
   final bool showVideo;
+
+  /// Extra audio fade-out (crossfading into the next clip on the same track).
+  final Duration audioFadeOut;
 
   @override
   ConsumerState<ClipPlayer> createState() => _ClipPlayerState();
@@ -35,6 +41,7 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
   static const _maxDrift = Duration(milliseconds: 350);
 
   VideoPlayerController? _controller;
+  PlayerLease? _lease;
   bool _failed = false;
 
   @override
@@ -45,7 +52,8 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
 
   Future<void> _attach() async {
     try {
-      final controller = await ref.read(playerPoolProvider).acquire(widget.asset.path);
+      _lease = ref.read(playerPoolProvider).acquire(widget.asset.path);
+      final controller = await _lease!.controller;
       if (!mounted) return;
       setState(() => _controller = controller);
       await _applyProperties();
@@ -60,6 +68,7 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     super.didUpdateWidget(old);
     if (old.clip.volume != widget.clip.volume ||
         old.clip.speed != widget.clip.speed ||
+        old.audioFadeOut != widget.audioFadeOut ||
         old.muted != widget.muted) {
       _applyProperties();
     }
@@ -81,9 +90,10 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     final drift = (controller.value.position - expected).abs();
 
     // Scrubbing (paused) always seeks; while playing only correct real drift.
-    if (widget.clip.isAnimated && !widget.muted) {
+    if ((widget.clip.isAnimated || widget.audioFadeOut > Duration.zero) && !widget.muted) {
+      final fadeOut = maxDuration(widget.clip.fadeOut, widget.audioFadeOut);
       await controller.setVolume(
-        widget.clip.volumeAt(timeline.position).clamp(0.0, 1.0).toDouble(),
+        widget.clip.volumeAt(timeline.position, fadeOut: fadeOut).clamp(0.0, 1.0).toDouble(),
       );
     }
     if (force || !timeline.isPlaying || drift > _maxDrift) {
@@ -98,7 +108,7 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
 
   @override
   void dispose() {
-    _controller?.pause(); // pooled controller stays alive for reuse
+    _lease?.release(); // controller stays pooled for reuse
     super.dispose();
   }
 

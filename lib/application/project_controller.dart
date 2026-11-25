@@ -163,6 +163,12 @@ class ProjectController extends Notifier<History<Project>> {
           {Duration length = const Duration(milliseconds: 500)}) =>
       _commit(_editor.addTransition(_project, clipId, length));
 
+  void addCrossfade(String clipId, {Duration length = const Duration(seconds: 1)}) =>
+      _commit(_editor.addCrossfade(_project, clipId, length));
+
+  void removeCrossfade(String clipId) =>
+      _commit(_editor.removeCrossfade(_project, clipId));
+
   String pasteClip(TimelineClip clip, {Duration? at}) {
     final id = newId('clip_');
     _commit(_editor.insertClip(

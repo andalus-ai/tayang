@@ -76,6 +76,16 @@ class EditorActions {
     if (id != null) _project.addTransition(id);
   }
 
+  void addCrossfadeToSelected() {
+    final id = _selectedId;
+    if (id != null) _project.addCrossfade(id);
+  }
+
+  void removeCrossfadeFromSelected() {
+    final id = _selectedId;
+    if (id != null) _project.removeCrossfade(id);
+  }
+
   void newProject() {
     _playback.pause();
     _playback.seek(Duration.zero);

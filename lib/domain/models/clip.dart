@@ -143,21 +143,22 @@ class TimelineClip {
   }
 
   /// Effective volume at timeline time [t] (keyframes × fades).
-  double volumeAt(Duration t) {
+  double volumeAt(Duration t, {Duration? fadeOut}) {
     final base = volumeKeys.isEmpty ? volume : volumeKeys.valueAt(t - start, volume);
-    return base * fadeFactorAt(t);
+    return base * fadeFactorAt(t, fadeOut: fadeOut);
   }
 
   bool get hasFades => fadeIn > Duration.zero || fadeOut > Duration.zero;
 
   /// 0..1 multiplier for opacity / volume at timeline time [t].
-  double fadeFactorAt(Duration t) {
+  double fadeFactorAt(Duration t, {Duration? fadeOut}) {
+    final out = fadeOut ?? this.fadeOut;
     var factor = 1.0;
     if (fadeIn > Duration.zero) {
       factor = math.min(factor, (t - start).inMicroseconds / fadeIn.inMicroseconds);
     }
-    if (fadeOut > Duration.zero) {
-      factor = math.min(factor, (end - t).inMicroseconds / fadeOut.inMicroseconds);
+    if (out > Duration.zero) {
+      factor = math.min(factor, (end - t).inMicroseconds / out.inMicroseconds);
     }
     return factor.clamp(0.0, 1.0).toDouble();
   }

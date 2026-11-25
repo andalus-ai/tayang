@@ -75,6 +75,36 @@ class Project {
     return null;
   }
 
+  /// The clip on the same track that starts inside [clip] with a fade-in, i.e.
+  /// the clip this one is crossfading into.
+  TimelineClip? crossfadeTarget(TimelineClip clip) {
+    final track = trackOfClip(clip.id);
+    if (track == null) return null;
+    for (final c in track.clips) {
+      if (c.id != clip.id &&
+          c.start > clip.start &&
+          c.start < clip.end &&
+          c.fadeIn > Duration.zero) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  /// Length of the crossfade at the end of [clip] (zero when there is none).
+  Duration crossfadeOutOf(TimelineClip clip) {
+    final next = crossfadeTarget(clip);
+    return next == null ? Duration.zero : clip.end - next.start;
+  }
+
+  /// Whether [clipId] overlaps the end of an earlier clip on its track.
+  bool hasCrossfadeIn(String clipId) {
+    final clip = clipById(clipId);
+    final track = trackOfClip(clipId);
+    if (clip == null || track == null) return false;
+    return track.clips.any((a) => a.id != clipId && a.start < clip.start && a.end > clip.start);
+  }
+
   Project copyWith({
     String? name,
     List<Track>? tracks,

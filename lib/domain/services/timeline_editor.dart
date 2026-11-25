@@ -385,6 +385,64 @@ class TimelineEditor {
     return _replaceClip(_replaceClip(p, clip.copyWith(fadeOut: d)), next.copyWith(fadeIn: d));
   }
 
+  /// Crossfade from [clipId] into the clip that directly follows it: the next
+  /// clip (and everything after it) slides earlier by [length] so the two
+  /// overlap, and the next clip fades in over the outgoing one.
+  Project addCrossfade(Project p, String clipId, Duration length) {
+    final a = p.clipById(clipId);
+    final track = p.trackOfClip(clipId);
+    if (a == null || track == null || track.isLocked) return p;
+    TimelineClip? b;
+    for (final c in track.clips) {
+      if (c.id != clipId && (c.start - a.end).abs() < const Duration(milliseconds: 50)) b = c;
+    }
+    if (b == null) return p;
+    final d = minDuration(length, minDuration(a.duration, b.duration) ~/ 2);
+    if (d <= Duration.zero) return p;
+    final next = b;
+    return updateTrack(
+      p,
+      track.id,
+      (t) => t.copyWith(clips: [
+        for (final c in t.clips)
+          if (c.start >= next.start)
+            c.copyWith(
+              start: c.start - d,
+              fadeIn: c.id == next.id ? d : c.fadeIn,
+            )
+          else
+            c,
+      ]),
+    );
+  }
+
+  /// Undoes [addCrossfade] for the clip that fades in over its predecessor.
+  Project removeCrossfade(Project p, String clipId) {
+    final b = p.clipById(clipId);
+    final track = p.trackOfClip(clipId);
+    if (b == null || track == null || track.isLocked) return p;
+    TimelineClip? a;
+    for (final c in track.clips) {
+      if (c.id != clipId && c.start < b.start && c.end > b.start) a = c;
+    }
+    if (a == null) return p;
+    final overlap = a.end - b.start;
+    return updateTrack(
+      p,
+      track.id,
+      (t) => t.copyWith(clips: [
+        for (final c in t.clips)
+          if (c.start >= b.start)
+            c.copyWith(
+              start: c.start + overlap,
+              fadeIn: c.id == clipId ? Duration.zero : c.fadeIn,
+            )
+          else
+            c,
+      ]),
+    );
+  }
+
   // --------------------------------------------------------------- keyframes
 
   Project setKeyframe(

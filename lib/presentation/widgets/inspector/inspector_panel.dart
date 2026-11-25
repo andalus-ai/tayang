@@ -108,6 +108,7 @@ class _ClipInspector extends ConsumerWidget {
     final controller = ref.read(projectControllerProvider.notifier);
     final actions = ref.read(editorActionsProvider);
     final asset = ref.watch(projectProvider.select((p) => p.assetById(clip.assetId)));
+    final crossfaded = ref.watch(projectProvider.select((p) => p.hasCrossfadeIn(clip.id)));
     final title = clip.kind == ClipKind.text ? 'Text clip' : (asset?.name ?? 'Missing media');
     final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedText);
 
@@ -225,6 +226,18 @@ class _ClipInspector extends ConsumerWidget {
               icon: const Icon(Icons.content_copy, size: 16),
               label: const Text('Copy'),
             ),
+            if (crossfaded)
+              OutlinedButton.icon(
+                onPressed: actions.removeCrossfadeFromSelected,
+                icon: const Icon(Icons.layers_clear, size: 16),
+                label: const Text('Remove crossfade'),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: actions.addCrossfadeToSelected,
+                icon: const Icon(Icons.layers, size: 16),
+                label: const Text('Crossfade to next'),
+              ),
             OutlinedButton.icon(
               onPressed: actions.addTransitionToSelected,
               icon: const Icon(Icons.blur_linear, size: 16),

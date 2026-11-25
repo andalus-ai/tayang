@@ -5,16 +5,40 @@ import '../domain/models/track.dart';
 import 'playback_controller.dart';
 import 'project_controller.dart';
 
-/// The clip whose picture is on screen at the playhead (top-most visible video
-/// track wins). TimelineClip has value-equality, so this only notifies on a real change.
-final activeVisualClipProvider = Provider<TimelineClip?>((ref) {
+/// Value-equal wrapper so the preview only rebuilds when the *set* of visible
+/// clips changes, not on every playback tick.
+class ActiveClips {
+  const ActiveClips(this.clips);
+
+  final List<TimelineClip> clips;
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ActiveClips || other.clips.length != clips.length) return false;
+    for (var i = 0; i < clips.length; i++) {
+      if (other.clips[i] != clips[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(clips);
+}
+
+/// Every picture on screen at the playhead, ordered bottom → top: clips of all
+/// visible video tracks (picture-in-picture) plus overlapping clips on one
+/// track (crossfades, later start = on top).
+final activeVisualClipsProvider = Provider<ActiveClips>((ref) {
   final project = ref.watch(projectProvider);
   final position = ref.watch(playbackProvider.select((s) => s.position));
-  for (final track in project.tracks) {
+  final out = <TimelineClip>[];
+  for (final track in project.tracks.reversed) {
     if (track.kind != TrackKind.video || !track.isVisible) continue;
-    for (final clip in track.clips) {
-      if (clip.containsTime(position)) return clip;
-    }
+    final inTrack = [
+      for (final clip in track.clips)
+        if (clip.containsTime(position)) clip,
+    ]..sort((a, b) => a.start.compareTo(b.start));
+    out.addAll(inTrack);
   }
-  return null;
+  return ActiveClips(out);
 });
