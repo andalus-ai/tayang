@@ -27,6 +27,7 @@ class TransportBar extends ConsumerWidget {
     final hasSelection = ref.watch(selectionProvider.select((id) => id != null));
     final zoom = ref.watch(timelineZoomProvider);
     final zoomController = ref.read(timelineZoomProvider.notifier);
+    final snapping = ref.watch(snapEnabledProvider);
 
     return Container(
       height: 52,
@@ -128,6 +129,12 @@ class TransportBar extends ConsumerWidget {
               icon: Icons.zoom_in,
               tooltip: 'Zoom in',
               onPressed: zoomController.zoomIn,
+            ),
+            IconActionButton(
+              icon: Icons.align_horizontal_center,
+              tooltip: snapping ? 'Snapping on' : 'Snapping off',
+              selected: snapping,
+              onPressed: ref.read(snapEnabledProvider.notifier).toggle,
             ),
             if (onOpenInspector != null)
               IconActionButton(

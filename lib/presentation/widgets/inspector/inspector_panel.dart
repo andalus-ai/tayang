@@ -7,7 +7,9 @@ import '../../../application/selection_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/duration_x.dart';
 import '../../../domain/models/clip.dart';
+import '../../../domain/models/keyframes.dart';
 import '../common/labeled_slider.dart';
+import 'keyframed_slider.dart';
 import '../common/panel_container.dart';
 import '../common/synced_text_field.dart';
 
@@ -153,24 +155,29 @@ class _ClipInspector extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          LabeledSlider(
+          KeyframedSlider(
+            clip: clip,
+            property: KeyframeProperty.volume,
             label: 'Volume',
-            value: clip.volume,
-            min: 0,
             max: 2,
-            format: (v) => '${(v * 100).round()}%',
-            onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(volume: v)),
-            onChangeEnd: controller.endGesture,
           ),
         ],
-        if (clip.kind != ClipKind.audio)
+        if (clip.kind == ClipKind.video || clip.kind == ClipKind.image)
+          KeyframedSlider(
+            clip: clip,
+            property: KeyframeProperty.opacity,
+            label: 'Opacity',
+            max: 1,
+          ),
+        if (clip.kind == ClipKind.text)
           LabeledSlider(
             label: 'Opacity',
             value: clip.opacity,
             min: 0,
             max: 1,
             format: (v) => '${(v * 100).round()}%',
-            onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(opacity: v)),
+            onChanged: (v) =>
+                controller.updateClipLive(clip.id, (c) => c.copyWith(opacity: v)),
             onChangeEnd: controller.endGesture,
           ),
         if (clip.kind != ClipKind.text) ...[
@@ -195,6 +202,8 @@ class _ClipInspector extends ConsumerWidget {
             onChangeEnd: controller.endGesture,
           ),
         ],
+        if (clip.kind == ClipKind.video || clip.kind == ClipKind.image)
+          ..._transformSection(controller, muted),
         if (clip.kind == ClipKind.text) ..._textSection(controller, muted),
         const Divider(height: 28),
         Wrap(
@@ -212,6 +221,16 @@ class _ClipInspector extends ConsumerWidget {
               label: const Text('Duplicate'),
             ),
             OutlinedButton.icon(
+              onPressed: actions.copySelected,
+              icon: const Icon(Icons.content_copy, size: 16),
+              label: const Text('Copy'),
+            ),
+            OutlinedButton.icon(
+              onPressed: actions.addTransitionToSelected,
+              icon: const Icon(Icons.blur_linear, size: 16),
+              label: const Text('Dip to next'),
+            ),
+            OutlinedButton.icon(
               onPressed: () => actions.deleteSelected(),
               icon: const Icon(Icons.delete_outline, size: 16),
               label: const Text('Delete'),
@@ -225,6 +244,48 @@ class _ClipInspector extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  List<Widget> _transformSection(ProjectController controller, TextStyle? muted) {
+    return [
+      const SizedBox(height: 8),
+      Text('Transform', style: muted),
+      LabeledSlider(
+        label: 'Scale',
+        value: clip.scale,
+        min: 0.1,
+        max: 4,
+        format: (v) => '${v.toStringAsFixed(2)}×',
+        onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(scale: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      LabeledSlider(
+        label: 'Position X',
+        value: clip.offsetX,
+        min: -1,
+        max: 1,
+        format: (v) => '${(v * 100).round()}%',
+        onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(offsetX: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      LabeledSlider(
+        label: 'Position Y',
+        value: clip.offsetY,
+        min: -1,
+        max: 1,
+        format: (v) => '${(v * 100).round()}%',
+        onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(offsetY: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          onPressed: () => controller.updateClip(
+              clip.id, (c) => c.copyWith(scale: 1.0, offsetX: 0.0, offsetY: 0.0)),
+          child: const Text('Reset transform'),
+        ),
+      ),
+    ];
   }
 
   List<Widget> _textSection(ProjectController controller, TextStyle? muted) {

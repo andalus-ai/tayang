@@ -1,5 +1,6 @@
 import '../../core/utils/duration_x.dart';
 import '../models/clip.dart';
+import '../models/keyframes.dart';
 import '../models/media_asset.dart';
 import '../models/project.dart';
 import '../models/track.dart';
@@ -193,6 +194,8 @@ class TimelineEditor {
       clip.copyWith(
         start: start,
         duration: clip.duration - delta,
+        opacityKeys: clip.opacityKeys.slice(delta, clip.duration - delta),
+        volumeKeys: clip.volumeKeys.slice(delta, clip.duration - delta),
         sourceStart:
             clip.isTimeBased ? clip.sourceStart + sourceDelta : clip.sourceStart,
       ),
@@ -220,7 +223,15 @@ class TimelineEditor {
     }
     final end = newEnd.clampTo(lowest, highest);
     if (end == clip.end) return p;
-    return _replaceClip(p, clip.copyWith(duration: end - clip.start));
+    final length = end - clip.start;
+    return _replaceClip(
+      p,
+      clip.copyWith(
+        duration: length,
+        opacityKeys: clip.opacityKeys.slice(Duration.zero, length),
+        volumeKeys: clip.volumeKeys.slice(Duration.zero, length),
+      ),
+    );
   }
 
   /// Splits [clipId] at timeline time [at] into two contiguous clips.
@@ -236,12 +247,21 @@ class TimelineEditor {
     if (at <= clip.start + minClipDuration || at >= clip.end - minClipDuration) {
       return p;
     }
-    final left = clip.copyWith(duration: at - clip.start, fadeOut: Duration.zero);
+    final leftLength = at - clip.start;
+    final rightLength = clip.end - at;
+    final left = clip.copyWith(
+      duration: leftLength,
+      fadeOut: Duration.zero,
+      opacityKeys: clip.opacityKeys.slice(Duration.zero, leftLength),
+      volumeKeys: clip.volumeKeys.slice(Duration.zero, leftLength),
+    );
     final right = clip.copyWith(
       id: rightClipId,
       fadeIn: Duration.zero,
       start: at,
-      duration: clip.end - at,
+      duration: rightLength,
+      opacityKeys: clip.opacityKeys.slice(leftLength, rightLength),
+      volumeKeys: clip.volumeKeys.slice(leftLength, rightLength),
       sourceStart: clip.isTimeBased ? clip.sourcePositionAt(at) : clip.sourceStart,
     );
     return updateTrack(
@@ -296,13 +316,115 @@ class TimelineEditor {
         Duration(microseconds: (clip.sourceDuration.inMicroseconds / s).round());
     if (newDuration < minClipDuration) return p;
     if (_overlaps(track, clip.start, clip.start + newDuration, ignore: clipId)) return p;
-    return _replaceClip(p, clip.copyWith(speed: s, duration: newDuration));
+    final ratio = clip.duration.inMicroseconds == 0
+        ? 1.0
+        : newDuration.inMicroseconds / clip.duration.inMicroseconds;
+    return _replaceClip(
+      p,
+      clip.copyWith(
+        speed: s,
+        duration: newDuration,
+        opacityKeys: clip.opacityKeys.scaleTime(ratio),
+        volumeKeys: clip.volumeKeys.scaleTime(ratio),
+      ),
+    );
   }
 
   Project updateClip(Project p, String clipId, TimelineClip Function(TimelineClip) update) {
     final clip = p.clipById(clipId);
     if (clip == null) return p;
     return _replaceClip(p, update(clip));
+  }
+
+  /// Pastes a copy of [clip] at [at] on [trackId] or the first compatible track.
+  Project insertClip(
+    Project project,
+    TimelineClip clip, {
+    required String newClipId,
+    required String newTrackId,
+    required Duration at,
+    String? trackId,
+  }) {
+    var p = project;
+    Track? track = trackId == null ? null : p.trackById(trackId);
+    if (track == null || !track.kind.accepts(clip.kind) || track.isLocked) {
+      track = p.tracks
+          .where((t) => t.kind.accepts(clip.kind) && !t.isLocked)
+          .firstOrNull;
+    }
+    if (track == null) {
+      p = addTrack(p, TrackKind.forClip(clip.kind), trackId: newTrackId);
+      track = p.trackById(newTrackId)!;
+    }
+    final copy = clip.copyWith(
+      id: newClipId,
+      start: _firstFree(track, at, clip.duration),
+    );
+    return _replaceTrack(p, track.copyWith(clips: _sorted([...track.clips, copy])));
+  }
+
+  /// "Dip" transition: fades [clipId] out and the clip that directly follows it
+  /// on the same track in, by [length] (capped at half the shorter clip).
+  Project addTransition(Project p, String clipId, Duration length) {
+    final clip = p.clipById(clipId);
+    final track = p.trackOfClip(clipId);
+    if (clip == null || track == null || track.isLocked) return p;
+    TimelineClip? next;
+    for (final c in track.clips) {
+      if (c.id != clipId && (c.start - clip.end).abs() < const Duration(milliseconds: 50)) {
+        next = c;
+      }
+    }
+    if (next == null) return p;
+    final d = minDuration(length, minDuration(clip.duration, next.duration) ~/ 2);
+    return _replaceClip(_replaceClip(p, clip.copyWith(fadeOut: d)), next.copyWith(fadeIn: d));
+  }
+
+  // --------------------------------------------------------------- keyframes
+
+  Project setKeyframe(
+    Project p,
+    String clipId,
+    KeyframeProperty property,
+    Duration at,
+    double value,
+  ) {
+    final clip = p.clipById(clipId);
+    if (clip == null || at < clip.start || at > clip.end) return p;
+    final time = at - clip.start;
+    return _replaceClip(
+      p,
+      switch (property) {
+        KeyframeProperty.opacity => clip.copyWith(
+            opacityKeys: clip.opacityKeys.set(time, value.clamp(0.0, 1.0).toDouble())),
+        KeyframeProperty.volume => clip.copyWith(
+            volumeKeys: clip.volumeKeys.set(time, value.clamp(0.0, 2.0).toDouble())),
+      },
+    );
+  }
+
+  Project removeKeyframe(Project p, String clipId, KeyframeProperty property, int index) {
+    final clip = p.clipById(clipId);
+    if (clip == null) return p;
+    return _replaceClip(
+      p,
+      switch (property) {
+        KeyframeProperty.opacity => clip.copyWith(opacityKeys: clip.opacityKeys.removeAt(index)),
+        KeyframeProperty.volume => clip.copyWith(volumeKeys: clip.volumeKeys.removeAt(index)),
+      },
+    );
+  }
+
+  Project clearKeyframes(Project p, String clipId, KeyframeProperty property) {
+    final clip = p.clipById(clipId);
+    if (clip == null) return p;
+    return _replaceClip(
+      p,
+      switch (property) {
+        KeyframeProperty.opacity => clip.copyWith(opacityKeys: const Keyframes()),
+        KeyframeProperty.volume => clip.copyWith(volumeKeys: const Keyframes()),
+      },
+    );
   }
 
   /// Start/end times of every clip (except [exclude]) — magnetic snap targets.

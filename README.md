@@ -21,9 +21,10 @@ Platform notes: Android needs `minSdkVersion 24`; iOS/macOS need a recent deploy
 
 ## Features
 Multi-track timeline, drag/trim/split/ripple/duplicate, magnetic snapping, text clips, speed, volume, opacity,
-fade in/out, thumbnails, undo/redo (gestures = one step), autosave, aspect presets, export (480p–4K), shortcuts
-(Space, S, Del, Shift+Del, ←/→, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D, Ctrl+wheel zoom).
+fade in/out, dip transitions, opacity + volume keyframes, scale/position transform, copy/cut/paste, snapping toggle, thumbnails, audio waveforms, undo/redo (gestures = one step), autosave, aspect presets, export (480p–4K), shortcuts
+(Space, S, Del, Shift+Del, ←/→, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D/C/X/V, Ctrl+wheel zoom).
 
 ## Known limits
+Keyframed opacity exports via `geq` (per-pixel, slow at 4K). Crossfades that overlap two clips aren't supported (dip transitions are). Text clips have no keyframes/fades in export.
 Not yet compiled by the author, so run `flutter analyze` first (CI does it). Silent videos rely on the probe's audio
 detection. Preview mixes via separate players (not sample-accurate). Text clips don't fade in export.

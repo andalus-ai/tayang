@@ -15,3 +15,13 @@ class TimelineZoomController extends Notifier<double> {
 
 final timelineZoomProvider =
     NotifierProvider<TimelineZoomController, double>(TimelineZoomController.new);
+
+/// Whether dragging clips snaps to neighbouring edges and the playhead.
+class SnapController extends Notifier<bool> {
+  @override
+  bool build() => true;
+
+  void toggle() => state = !state;
+}
+
+final snapEnabledProvider = NotifierProvider<SnapController, bool>(SnapController.new);

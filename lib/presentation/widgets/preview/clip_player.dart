@@ -6,6 +6,7 @@ import '../../../application/di.dart';
 import '../../../application/playback_controller.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
+import 'clip_transform.dart';
 
 /// Plays one timeline clip, slaved to the timeline clock (`playbackProvider`).
 /// With `showVideo: false` it is audio-only (audio-track clips, hidden layers).
@@ -80,9 +81,10 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     final drift = (controller.value.position - expected).abs();
 
     // Scrubbing (paused) always seeks; while playing only correct real drift.
-    if (widget.clip.hasFades && !widget.muted) {
-      final fade = widget.clip.fadeFactorAt(timeline.position);
-      await controller.setVolume(widget.clip.volume.clamp(0.0, 1.0).toDouble() * fade);
+    if (widget.clip.isAnimated && !widget.muted) {
+      await controller.setVolume(
+        widget.clip.volumeAt(timeline.position).clamp(0.0, 1.0).toDouble(),
+      );
     }
     if (force || !timeline.isPlaying || drift > _maxDrift) {
       await controller.seekTo(expected);
@@ -111,17 +113,20 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     if (controller == null || !controller.value.isInitialized) {
       return const SizedBox.shrink();
     }
-    final fade = widget.clip.hasFades
-        ? widget.clip.fadeFactorAt(ref.watch(playbackProvider.select((s) => s.position)))
-        : 1.0;
-    return Opacity(
-      opacity: widget.clip.opacity.clamp(0.0, 1.0).toDouble() * fade,
-      child: FittedBox(
-        fit: BoxFit.contain,
-        child: SizedBox(
-          width: controller.value.size.width,
-          height: controller.value.size.height,
-          child: VideoPlayer(controller),
+    final opacity = widget.clip.isAnimated
+        ? widget.clip.opacityAt(ref.watch(playbackProvider.select((s) => s.position)))
+        : widget.clip.opacity.clamp(0.0, 1.0).toDouble();
+    return ClipTransform(
+      clip: widget.clip,
+      child: Opacity(
+        opacity: opacity,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
         ),
       ),
     );

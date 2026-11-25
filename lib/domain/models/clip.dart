@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'keyframes.dart';
 import 'media_asset.dart';
 
 enum ClipKind { video, audio, image, text }
@@ -91,6 +92,11 @@ class TimelineClip {
     this.opacity = 1.0,
     this.fadeIn = Duration.zero,
     this.fadeOut = Duration.zero,
+    this.opacityKeys = const Keyframes(),
+    this.volumeKeys = const Keyframes(),
+    this.scale = 1.0,
+    this.offsetX = 0.0,
+    this.offsetY = 0.0,
     this.text,
   });
 
@@ -105,6 +111,13 @@ class TimelineClip {
   final double opacity;
   final Duration fadeIn;
   final Duration fadeOut;
+  final Keyframes opacityKeys;
+  final Keyframes volumeKeys;
+
+  /// Visual transform: zoom factor and offset as a fraction of the canvas.
+  final double scale;
+  final double offsetX;
+  final double offsetY;
   final TextOverlay? text;
 
   Duration get end => start + duration;
@@ -117,6 +130,23 @@ class TimelineClip {
   Duration get sourceEnd => sourceStart + sourceDuration;
 
   bool containsTime(Duration t) => t >= start && t < end;
+
+  bool get hasTransform => scale != 1.0 || offsetX != 0.0 || offsetY != 0.0;
+
+  bool get isAnimated =>
+      hasFades || opacityKeys.isNotEmpty || volumeKeys.isNotEmpty;
+
+  /// Effective opacity at timeline time [t] (keyframes × fades).
+  double opacityAt(Duration t) {
+    final base = opacityKeys.isEmpty ? opacity : opacityKeys.valueAt(t - start, opacity);
+    return (base * fadeFactorAt(t)).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// Effective volume at timeline time [t] (keyframes × fades).
+  double volumeAt(Duration t) {
+    final base = volumeKeys.isEmpty ? volume : volumeKeys.valueAt(t - start, volume);
+    return base * fadeFactorAt(t);
+  }
 
   bool get hasFades => fadeIn > Duration.zero || fadeOut > Duration.zero;
 
@@ -146,6 +176,11 @@ class TimelineClip {
     double? opacity,
     Duration? fadeIn,
     Duration? fadeOut,
+    Keyframes? opacityKeys,
+    Keyframes? volumeKeys,
+    double? scale,
+    double? offsetX,
+    double? offsetY,
     TextOverlay? text,
   }) =>
       TimelineClip(
@@ -160,6 +195,11 @@ class TimelineClip {
         opacity: opacity ?? this.opacity,
         fadeIn: fadeIn ?? this.fadeIn,
         fadeOut: fadeOut ?? this.fadeOut,
+        opacityKeys: opacityKeys ?? this.opacityKeys,
+        volumeKeys: volumeKeys ?? this.volumeKeys,
+        scale: scale ?? this.scale,
+        offsetX: offsetX ?? this.offsetX,
+        offsetY: offsetY ?? this.offsetY,
         text: text ?? this.text,
       );
 
@@ -175,6 +215,11 @@ class TimelineClip {
         'opacity': opacity,
         'fadeIn': fadeIn.inMicroseconds,
         'fadeOut': fadeOut.inMicroseconds,
+        'opacityKeys': opacityKeys.toJson(),
+        'volumeKeys': volumeKeys.toJson(),
+        'scale': scale,
+        'offsetX': offsetX,
+        'offsetY': offsetY,
         'text': text?.toJson(),
       };
 
@@ -190,6 +235,11 @@ class TimelineClip {
         opacity: (json['opacity'] as num).toDouble(),
         fadeIn: Duration(microseconds: (json['fadeIn'] as int?) ?? 0),
         fadeOut: Duration(microseconds: (json['fadeOut'] as int?) ?? 0),
+        opacityKeys: Keyframes.fromJson(json['opacityKeys'] as List<dynamic>?),
+        volumeKeys: Keyframes.fromJson(json['volumeKeys'] as List<dynamic>?),
+        scale: (json['scale'] as num?)?.toDouble() ?? 1.0,
+        offsetX: (json['offsetX'] as num?)?.toDouble() ?? 0.0,
+        offsetY: (json['offsetY'] as num?)?.toDouble() ?? 0.0,
         text: json['text'] == null
             ? null
             : TextOverlay.fromJson(json['text'] as Map<String, dynamic>),
@@ -209,9 +259,14 @@ class TimelineClip {
       other.opacity == opacity &&
       other.fadeIn == fadeIn &&
       other.fadeOut == fadeOut &&
+      other.opacityKeys == opacityKeys &&
+      other.volumeKeys == volumeKeys &&
+      other.scale == scale &&
+      other.offsetX == offsetX &&
+      other.offsetY == offsetY &&
       other.text == text;
 
   @override
   int get hashCode => Object.hash(
-      id, kind, assetId, start, duration, sourceStart, speed, volume, opacity, fadeIn, fadeOut, text);
+      id, kind, assetId, start, duration, sourceStart, speed, volume, opacity, fadeIn, fadeOut, opacityKeys, volumeKeys, scale, offsetX, offsetY, text);
 }

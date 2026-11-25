@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/models/clip.dart';
 import '../domain/models/media_asset.dart';
 import '../domain/models/project.dart';
 import '../domain/models/track.dart';
+import 'clipboard_controller.dart';
 import 'playback_controller.dart';
 import 'project_controller.dart';
 import 'selection_controller.dart';
@@ -47,6 +49,31 @@ class EditorActions {
   void duplicateSelected() {
     final id = _selectedId;
     if (id != null) _selection.select(_project.duplicateClip(id));
+  }
+
+  TimelineClip? get _selectedClip {
+    final id = _selectedId;
+    return id == null ? null : _ref.read(projectProvider).clipById(id);
+  }
+
+  void copySelected() {
+    final clip = _selectedClip;
+    if (clip != null) _ref.read(clipboardProvider.notifier).copy(clip);
+  }
+
+  void cutSelected() {
+    copySelected();
+    deleteSelected();
+  }
+
+  void paste() {
+    final clip = _ref.read(clipboardProvider);
+    if (clip != null) _selection.select(_project.pasteClip(clip));
+  }
+
+  void addTransitionToSelected() {
+    final id = _selectedId;
+    if (id != null) _project.addTransition(id);
   }
 
   void newProject() {

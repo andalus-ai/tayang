@@ -11,6 +11,7 @@ import '../../../domain/models/media_asset.dart';
 import '../../../domain/models/track.dart';
 import '../common/panel_container.dart';
 import 'clip_player.dart';
+import 'clip_transform.dart';
 
 class PreviewPanel extends ConsumerWidget {
   const PreviewPanel({super.key});
@@ -65,15 +66,18 @@ class _VisualLayer extends ConsumerWidget {
     if (asset == null) return const SizedBox.expand();
 
     if (clip.kind == ClipKind.image) {
-      final fade = clip.hasFades
-          ? clip.fadeFactorAt(ref.watch(playbackProvider.select((s) => s.position)))
-          : 1.0;
-      return Opacity(
-        opacity: clip.opacity.clamp(0.0, 1.0).toDouble() * fade,
-        child: Image.file(
-          File(asset.path),
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const SizedBox.expand(),
+      final opacity = clip.isAnimated
+          ? clip.opacityAt(ref.watch(playbackProvider.select((s) => s.position)))
+          : clip.opacity.clamp(0.0, 1.0).toDouble();
+      return ClipTransform(
+        clip: clip,
+        child: Opacity(
+          opacity: opacity,
+          child: Image.file(
+            File(asset.path),
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.expand(),
+          ),
         ),
       );
     }

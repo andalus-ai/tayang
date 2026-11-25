@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/project_controller.dart';
 import '../../../application/selection_controller.dart';
 import '../../../application/thumbnails.dart';
+import '../../../application/timeline_zoom_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
@@ -52,7 +53,8 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
       widget.clip.id,
       geo.timeAt(d.globalPosition) - _grab,
       toTrackId: target?.id,
-      snapThreshold: geo.scale.toTime(8),
+      snapThreshold:
+          ref.read(snapEnabledProvider) ? geo.scale.toTime(8) : Duration.zero,
     );
   }
 
@@ -171,6 +173,10 @@ class _ClipBody extends ConsumerWidget {
       child: Stack(
         children: [
           if (wave != null) Positioned.fill(child: _Waveform(path: wave, clip: clip, asset: asset!)),
+          if (clip.opacityKeys.isNotEmpty || clip.volumeKeys.isNotEmpty)
+            Positioned.fill(
+              child: IgnorePointer(child: CustomPaint(painter: _KeyMarkers(clip))),
+            ),
           Row(
         children: [
           Expanded(
@@ -269,4 +275,38 @@ class _TrimHandle extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Small diamonds along the bottom edge of a clip at each keyframe time.
+class _KeyMarkers extends CustomPainter {
+  _KeyMarkers(this.clip);
+
+  final TimelineClip clip;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = clip.duration.inMicroseconds;
+    if (total <= 0) return;
+    final paint = Paint()..color = Colors.white;
+    final times = {
+      for (final k in clip.opacityKeys.points) k.time.inMicroseconds,
+      for (final k in clip.volumeKeys.points) k.time.inMicroseconds,
+    };
+    for (final t in times) {
+      final x = size.width * t / total;
+      final y = size.height - 7;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y - 4)
+          ..lineTo(x + 4, y)
+          ..lineTo(x, y + 4)
+          ..lineTo(x - 4, y)
+          ..close(),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_KeyMarkers old) => old.clip != clip;
 }

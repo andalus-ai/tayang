@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/id.dart';
 import '../domain/models/clip.dart';
 import '../domain/models/history.dart';
+import '../domain/models/keyframes.dart';
 import '../domain/models/media_asset.dart';
 import '../domain/models/project.dart';
 import '../domain/models/track.dart';
@@ -139,6 +140,37 @@ class ProjectController extends Notifier<History<Project>> {
 
   void setSpeed(String clipId, double speed) =>
       _commit(_editor.setSpeed(_project, clipId, speed));
+
+  // -------------------------------------------------------------- keyframes
+
+  /// Sets a keyframe at the playhead (ignored if the playhead is outside the clip).
+  void setKeyframeLive(String clipId, KeyframeProperty property, double value) =>
+      _live(_editor.setKeyframe(_project, clipId, property, _playhead, value));
+
+  void setKeyframe(String clipId, KeyframeProperty property, double value) =>
+      _commit(_editor.setKeyframe(_project, clipId, property, _playhead, value));
+
+  void removeKeyframe(String clipId, KeyframeProperty property, int index) =>
+      _commit(_editor.removeKeyframe(_project, clipId, property, index));
+
+  void clearKeyframes(String clipId, KeyframeProperty property) =>
+      _commit(_editor.clearKeyframes(_project, clipId, property));
+
+  void addTransition(String clipId,
+          {Duration length = const Duration(milliseconds: 500)}) =>
+      _commit(_editor.addTransition(_project, clipId, length));
+
+  String pasteClip(TimelineClip clip, {Duration? at}) {
+    final id = newId('clip_');
+    _commit(_editor.insertClip(
+      _project,
+      clip,
+      newClipId: id,
+      newTrackId: newId('track_'),
+      at: at ?? _playhead,
+    ));
+    return id;
+  }
 
   /// Splits [clipId] at [at]; with no id, splits every unlocked clip under [at].
   void splitAt(Duration at, {String? clipId}) {

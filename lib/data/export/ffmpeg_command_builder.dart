@@ -1,5 +1,6 @@
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/clip.dart';
+import '../../domain/models/keyframes.dart';
 import '../../domain/models/media_asset.dart';
 import '../../domain/models/project.dart';
 import '../../domain/models/track.dart';
@@ -73,17 +74,27 @@ class FfmpegCommandBuilder {
             'scale=$w:$h:force_original_aspect_ratio=decrease',
             'format=rgba',
             'pad=$w:$h:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            if ((clip.scale - 1.0).abs() > 0.001)
+              'scale=trunc(iw*${_n(clip.scale)}/2)*2:trunc(ih*${_n(clip.scale)}/2)*2',
             if (clip.fadeIn > Duration.zero)
               'fade=t=in:st=${_s(clip.start)}:d=${_s(clip.fadeIn)}:alpha=1',
             if (clip.fadeOut > Duration.zero)
               'fade=t=out:st=${_s(clip.end - clip.fadeOut)}:d=${_s(clip.fadeOut)}:alpha=1',
-            if (clip.opacity < 0.999) 'colorchannelmixer=aa=${_n(clip.opacity)}',
+            if (clip.opacityKeys.isNotEmpty)
+              "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+                  "a='alpha(X,Y)*(${_lerp(clip.opacityKeys, clip.start, 'T')})'"
+            else if (clip.opacity < 0.999)
+              'colorchannelmixer=aa=${_n(clip.opacity)}',
           ];
           final layer = 'v$index';
+          final position = clip.hasTransform
+              ? ':x=(main_w-overlay_w)/2+${_n(clip.offsetX)}*main_w'
+                  ':y=(main_h-overlay_h)/2+${_n(clip.offsetY)}*main_h'
+              : '';
           final next = 'o${step++}';
           filters
             ..add('[$index:v]${chain.join(',')}[$layer]')
-            ..add('[$last][$layer]overlay=eof_action=pass:format=auto[$next]');
+            ..add('[$last][$layer]overlay=eof_action=pass:format=auto$position[$next]');
           last = next;
         }
 
@@ -95,7 +106,10 @@ class FfmpegCommandBuilder {
             if (clip.fadeIn > Duration.zero) 'afade=t=in:st=0:d=${_s(clip.fadeIn)}',
             if (clip.fadeOut > Duration.zero)
               'afade=t=out:st=${_s(clip.duration - clip.fadeOut)}:d=${_s(clip.fadeOut)}',
-            'volume=${_n(clip.volume)}',
+            if (clip.volumeKeys.isNotEmpty)
+              "volume='${_lerp(clip.volumeKeys, Duration.zero, 't')}':eval=frame"
+            else
+              'volume=${_n(clip.volume)}',
             'adelay=${clip.start.inMilliseconds}:all=1',
           ];
           filters.add('[$index:a]${chain.join(',')}[a$index]');
@@ -138,6 +152,24 @@ class FfmpegCommandBuilder {
       '-t', _s(clip.sourceDuration),
       '-i', asset.path,
     ];
+  }
+
+  /// Piecewise-linear FFmpeg expression of [keys] over time variable [t].
+  /// [origin] is added to each key time (absolute vs clip-local time).
+  String _lerp(Keyframes keys, Duration origin, String t) {
+    final pts = keys.points;
+    if (pts.length == 1) return _n(pts.first.value);
+    var expr = _n(pts.last.value);
+    for (var i = pts.length - 2; i >= 0; i--) {
+      final a = pts[i];
+      final b = pts[i + 1];
+      final span = b.time - a.time;
+      final segment = span <= Duration.zero
+          ? _n(b.value)
+          : '(${_n(a.value)}+(${_n(b.value - a.value)})*($t-${_s(origin + a.time)})/${_s(span)})';
+      expr = 'if(lt($t,${_s(origin + b.time)}),$segment,$expr)';
+    }
+    return 'if(lt($t,${_s(origin + pts.first.time)}),${_n(pts.first.value)},$expr)';
   }
 
   /// `atempo` only accepts 0.5–2.0, so chain it for extreme speeds.

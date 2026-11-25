@@ -58,6 +58,9 @@ class _EditorShortcutsState extends ConsumerState<EditorShortcuts> {
         mod(LogicalKeyboardKey.keyZ, shift: true): () => _run(a.redo),
         mod(LogicalKeyboardKey.keyY): () => _run(a.redo),
         mod(LogicalKeyboardKey.keyD): () => _run(a.duplicateSelected),
+        mod(LogicalKeyboardKey.keyC): () => _run(a.copySelected),
+        mod(LogicalKeyboardKey.keyX): () => _run(a.cutSelected),
+        mod(LogicalKeyboardKey.keyV): () => _run(a.paste),
       },
       child: Focus(
         focusNode: _focus,
