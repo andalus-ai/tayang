@@ -236,9 +236,10 @@ class TimelineEditor {
     if (at <= clip.start + minClipDuration || at >= clip.end - minClipDuration) {
       return p;
     }
-    final left = clip.copyWith(duration: at - clip.start);
+    final left = clip.copyWith(duration: at - clip.start, fadeOut: Duration.zero);
     final right = clip.copyWith(
       id: rightClipId,
+      fadeIn: Duration.zero,
       start: at,
       duration: clip.end - at,
       sourceStart: clip.isTimeBased ? clip.sourcePositionAt(at) : clip.sourceStart,
@@ -290,7 +291,7 @@ class TimelineEditor {
     final clip = p.clipById(clipId);
     final track = p.trackOfClip(clipId);
     if (clip == null || track == null || track.isLocked || !clip.isTimeBased) return p;
-    final s = speed.clamp(0.25, 4.0);
+    final s = speed.clamp(0.25, 4.0).toDouble();
     final newDuration =
         Duration(microseconds: (clip.sourceDuration.inMicroseconds / s).round());
     if (newDuration < minClipDuration) return p;

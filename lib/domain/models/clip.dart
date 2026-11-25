@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'media_asset.dart';
 
 enum ClipKind { video, audio, image, text }
@@ -87,6 +89,8 @@ class TimelineClip {
     this.speed = 1.0,
     this.volume = 1.0,
     this.opacity = 1.0,
+    this.fadeIn = Duration.zero,
+    this.fadeOut = Duration.zero,
     this.text,
   });
 
@@ -99,6 +103,8 @@ class TimelineClip {
   final double speed;
   final double volume;
   final double opacity;
+  final Duration fadeIn;
+  final Duration fadeOut;
   final TextOverlay? text;
 
   Duration get end => start + duration;
@@ -112,6 +118,20 @@ class TimelineClip {
 
   bool containsTime(Duration t) => t >= start && t < end;
 
+  bool get hasFades => fadeIn > Duration.zero || fadeOut > Duration.zero;
+
+  /// 0..1 multiplier for opacity / volume at timeline time [t].
+  double fadeFactorAt(Duration t) {
+    var factor = 1.0;
+    if (fadeIn > Duration.zero) {
+      factor = math.min(factor, (t - start).inMicroseconds / fadeIn.inMicroseconds);
+    }
+    if (fadeOut > Duration.zero) {
+      factor = math.min(factor, (end - t).inMicroseconds / fadeOut.inMicroseconds);
+    }
+    return factor.clamp(0.0, 1.0).toDouble();
+  }
+
   /// Position inside the source media that corresponds to timeline time [t].
   Duration sourcePositionAt(Duration t) => sourceStart +
       Duration(microseconds: ((t - start).inMicroseconds * speed).round());
@@ -124,6 +144,8 @@ class TimelineClip {
     double? speed,
     double? volume,
     double? opacity,
+    Duration? fadeIn,
+    Duration? fadeOut,
     TextOverlay? text,
   }) =>
       TimelineClip(
@@ -136,6 +158,8 @@ class TimelineClip {
         speed: speed ?? this.speed,
         volume: volume ?? this.volume,
         opacity: opacity ?? this.opacity,
+        fadeIn: fadeIn ?? this.fadeIn,
+        fadeOut: fadeOut ?? this.fadeOut,
         text: text ?? this.text,
       );
 
@@ -149,6 +173,8 @@ class TimelineClip {
         'speed': speed,
         'volume': volume,
         'opacity': opacity,
+        'fadeIn': fadeIn.inMicroseconds,
+        'fadeOut': fadeOut.inMicroseconds,
         'text': text?.toJson(),
       };
 
@@ -162,6 +188,8 @@ class TimelineClip {
         speed: (json['speed'] as num).toDouble(),
         volume: (json['volume'] as num).toDouble(),
         opacity: (json['opacity'] as num).toDouble(),
+        fadeIn: Duration(microseconds: (json['fadeIn'] as int?) ?? 0),
+        fadeOut: Duration(microseconds: (json['fadeOut'] as int?) ?? 0),
         text: json['text'] == null
             ? null
             : TextOverlay.fromJson(json['text'] as Map<String, dynamic>),
@@ -179,9 +207,11 @@ class TimelineClip {
       other.speed == speed &&
       other.volume == volume &&
       other.opacity == opacity &&
+      other.fadeIn == fadeIn &&
+      other.fadeOut == fadeOut &&
       other.text == text;
 
   @override
   int get hashCode => Object.hash(
-      id, kind, assetId, start, duration, sourceStart, speed, volume, opacity, text);
+      id, kind, assetId, start, duration, sourceStart, speed, volume, opacity, fadeIn, fadeOut, text);
 }

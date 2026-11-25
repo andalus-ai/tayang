@@ -118,7 +118,7 @@ class TransportBar extends ConsumerWidget {
             SizedBox(
               width: 120,
               child: Slider(
-                value: zoom.clamp(TimelineZoomController.min, TimelineZoomController.max),
+                value: zoom.clamp(TimelineZoomController.min, TimelineZoomController.max).toDouble(),
                 min: TimelineZoomController.min,
                 max: TimelineZoomController.max,
                 onChanged: zoomController.set,

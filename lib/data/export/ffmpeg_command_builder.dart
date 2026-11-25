@@ -73,6 +73,10 @@ class FfmpegCommandBuilder {
             'scale=$w:$h:force_original_aspect_ratio=decrease',
             'format=rgba',
             'pad=$w:$h:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            if (clip.fadeIn > Duration.zero)
+              'fade=t=in:st=${_s(clip.start)}:d=${_s(clip.fadeIn)}:alpha=1',
+            if (clip.fadeOut > Duration.zero)
+              'fade=t=out:st=${_s(clip.end - clip.fadeOut)}:d=${_s(clip.fadeOut)}:alpha=1',
             if (clip.opacity < 0.999) 'colorchannelmixer=aa=${_n(clip.opacity)}',
           ];
           final layer = 'v$index';
@@ -88,6 +92,9 @@ class FfmpegCommandBuilder {
             'aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo',
             'asetpts=PTS-STARTPTS',
             ..._atempo(clip.speed),
+            if (clip.fadeIn > Duration.zero) 'afade=t=in:st=0:d=${_s(clip.fadeIn)}',
+            if (clip.fadeOut > Duration.zero)
+              'afade=t=out:st=${_s(clip.duration - clip.fadeOut)}:d=${_s(clip.fadeOut)}',
             'volume=${_n(clip.volume)}',
             'adelay=${clip.start.inMilliseconds}:all=1',
           ];

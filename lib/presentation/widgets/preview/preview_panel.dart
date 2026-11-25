@@ -65,8 +65,11 @@ class _VisualLayer extends ConsumerWidget {
     if (asset == null) return const SizedBox.expand();
 
     if (clip.kind == ClipKind.image) {
+      final fade = clip.hasFades
+          ? clip.fadeFactorAt(ref.watch(playbackProvider.select((s) => s.position)))
+          : 1.0;
       return Opacity(
-        opacity: clip.opacity.clamp(0.0, 1.0),
+        opacity: clip.opacity.clamp(0.0, 1.0).toDouble() * fade,
         child: Image.file(
           File(asset.path),
           fit: BoxFit.contain,
@@ -112,7 +115,7 @@ class _TextLayer extends ConsumerWidget {
                 child: FractionalTranslation(
                   translation: const Offset(-0.5, -0.5),
                   child: Opacity(
-                    opacity: clip.opacity.clamp(0.0, 1.0),
+                    opacity: clip.opacity.clamp(0.0, 1.0).toDouble(),
                     child: Text(
                       text.content,
                       textAlign: TextAlign.center,

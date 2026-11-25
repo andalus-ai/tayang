@@ -32,6 +32,11 @@ class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconActionButton(
+          icon: Icons.note_add_outlined,
+          tooltip: 'New project',
+          onPressed: () => _confirmNew(context, actions.newProject),
+        ),
+        IconActionButton(
           icon: Icons.undo,
           tooltip: 'Undo (Ctrl+Z)',
           onPressed: canUndo ? actions.undo : null,
@@ -55,6 +60,21 @@ class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
       ],
     );
   }
+}
+
+Future<void> _confirmNew(BuildContext context, VoidCallback onConfirm) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Start a new project?'),
+      content: const Text('The current project is autosaved, so you can keep working on it later.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('New project')),
+      ],
+    ),
+  );
+  if (ok == true) onConfirm();
 }
 
 class _ProjectName extends ConsumerWidget {

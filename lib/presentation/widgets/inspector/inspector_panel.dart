@@ -90,6 +90,8 @@ class _ClipInspector extends ConsumerWidget {
 
   final TimelineClip clip;
 
+  static const _maxFade = 5.0;
+
   static const _swatches = [
     0xFFFFFFFF,
     0xFFFFD84D,
@@ -171,6 +173,28 @@ class _ClipInspector extends ConsumerWidget {
             onChanged: (v) => controller.updateClipLive(clip.id, (c) => c.copyWith(opacity: v)),
             onChangeEnd: controller.endGesture,
           ),
+        if (clip.kind != ClipKind.text) ...[
+          LabeledSlider(
+            label: 'Fade in',
+            value: clip.fadeIn.seconds,
+            min: 0,
+            max: _maxFade,
+            format: (v) => '${v.toStringAsFixed(1)} s',
+            onChanged: (v) => controller.updateClipLive(
+                clip.id, (c) => c.copyWith(fadeIn: secondsToDuration(v))),
+            onChangeEnd: controller.endGesture,
+          ),
+          LabeledSlider(
+            label: 'Fade out',
+            value: clip.fadeOut.seconds,
+            min: 0,
+            max: _maxFade,
+            format: (v) => '${v.toStringAsFixed(1)} s',
+            onChanged: (v) => controller.updateClipLive(
+                clip.id, (c) => c.copyWith(fadeOut: secondsToDuration(v))),
+            onChangeEnd: controller.endGesture,
+          ),
+        ],
         if (clip.kind == ClipKind.text) ..._textSection(controller, muted),
         const Divider(height: 28),
         Wrap(

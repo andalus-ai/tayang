@@ -62,11 +62,48 @@ void main() {
     expect(h.undo().redo().present, 2);
   });
 
+  fadeTests();
+
   test('ffmpeg command maps video and audio', () {
     final args = const FfmpegCommandBuilder()
         .build(withClip(), const ExportSettings(), outputPath: '/tmp/out.mp4');
     expect(args, contains('-filter_complex'));
     expect(args, contains('[aout]'));
     expect(args.last, '/tmp/out.mp4');
+  });
+}
+
+void fadeTests() {
+  const editor = TimelineEditor();
+  const asset = MediaAsset(
+    id: 'a', path: '/tmp/a.mp4', name: 'a.mp4',
+    kind: MediaKind.video, duration: Duration(seconds: 10),
+  );
+  const base = Project(
+    id: 'p', name: 'p', assets: [asset],
+    tracks: [Track(id: 'v', kind: TrackKind.video, name: 'V')],
+  );
+
+  group('fades', () {
+    test('factor ramps in and out', () {
+      final p = editor.addClipFromAsset(base, asset, clipId: 'c', newTrackId: 't');
+      final c = p.clipById('c')!.copyWith(
+        fadeIn: const Duration(seconds: 2),
+        fadeOut: const Duration(seconds: 2),
+      );
+      expect(c.fadeFactorAt(const Duration(seconds: 1)), closeTo(0.5, 1e-6));
+      expect(c.fadeFactorAt(const Duration(seconds: 5)), 1.0);
+      expect(c.fadeFactorAt(const Duration(seconds: 9)), closeTo(0.5, 1e-6));
+    });
+
+    test('export graph contains fade and afade filters', () {
+      var p = editor.addClipFromAsset(base, asset, clipId: 'c', newTrackId: 't');
+      p = editor.updateClip(p, 'c', (c) => c.copyWith(fadeIn: const Duration(seconds: 1)));
+      final graph = const FfmpegCommandBuilder()
+          .build(p, const ExportSettings(), outputPath: 'o.mp4')
+          .join(' ');
+      expect(graph, contains('fade=t=in'));
+      expect(graph, contains('afade=t=in'));
+    });
   });
 }

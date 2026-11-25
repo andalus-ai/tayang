@@ -42,7 +42,7 @@ class FfmpegVideoExporter implements VideoExporter {
       null,
       (statistics) {
         if (controller.isClosed || totalMs <= 0) return;
-        final fraction = (statistics.getTime() / totalMs).clamp(0.0, 1.0);
+        final fraction = (statistics.getTime() / totalMs).clamp(0.0, 1.0).toDouble();
         controller.add(ExportRunning(fraction.toDouble()));
       },
     );

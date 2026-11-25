@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/editor_actions.dart';
 import '../../../application/media_import_controller.dart';
 import '../../../application/project_controller.dart';
+import '../../../application/thumbnails.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
@@ -122,7 +123,7 @@ IconData _icon(MediaKind kind) => switch (kind) {
       MediaKind.image => Icons.image_outlined,
     };
 
-class _TileContent extends StatelessWidget {
+class _TileContent extends ConsumerWidget {
   const _TileContent({
     required this.asset,
     required this.onAdd,
@@ -134,8 +135,9 @@ class _TileContent extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = AppColors.forClip(asset.kind.clipKind);
+    final thumbnail = ref.watch(thumbnailPathProvider(asset)).valueOrNull;
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -150,9 +152,9 @@ class _TileContent extends StatelessWidget {
             child: SizedBox(
               width: 56,
               height: 40,
-              child: asset.kind == MediaKind.image
+              child: thumbnail != null
                   ? Image.file(
-                      File(asset.path),
+                      File(thumbnail),
                       fit: BoxFit.cover,
                       cacheWidth: 112,
                       errorBuilder: (_, __, ___) => _IconBox(asset.kind, color),

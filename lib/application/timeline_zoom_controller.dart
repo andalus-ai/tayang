@@ -8,7 +8,7 @@ class TimelineZoomController extends Notifier<double> {
   @override
   double build() => 80;
 
-  void set(double value) => state = value.clamp(min, max);
+  void set(double value) => state = value.clamp(min, max).toDouble();
   void zoomIn() => set(state * 1.25);
   void zoomOut() => set(state / 1.25);
 }

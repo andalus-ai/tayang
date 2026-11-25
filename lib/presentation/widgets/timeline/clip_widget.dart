@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/project_controller.dart';
 import '../../../application/selection_controller.dart';
+import '../../../application/thumbnails.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
+import '../../../domain/models/media_asset.dart';
 import '../../../domain/models/track.dart';
 import 'timeline_geometry.dart';
 
@@ -84,6 +87,7 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
               onHorizontalDragCancel: locked ? null : _controller.endGesture,
               child: _ClipBody(
                 clip: clip,
+                asset: asset,
                 label: label,
                 selected: selected,
                 dimmed: locked || !widget.track.isVisible && widget.track.hasVisual,
@@ -118,27 +122,43 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
   }
 }
 
-class _ClipBody extends StatelessWidget {
+class _ClipBody extends ConsumerWidget {
   const _ClipBody({
     required this.clip,
+    required this.asset,
     required this.label,
     required this.selected,
     required this.dimmed,
   });
 
   final TimelineClip clip;
+  final MediaAsset? asset;
   final String label;
   final bool selected;
   final bool dimmed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = AppColors.forClip(clip.kind);
+    final thumbnail = asset == null || asset!.kind == MediaKind.audio
+        ? null
+        : ref.watch(thumbnailPathProvider(asset!)).valueOrNull;
     return Container(
       clipBehavior: Clip.hardEdge,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: color.withAlpha(dimmed ? 90 : (selected ? 255 : 205)),
+        image: thumbnail == null
+            ? null
+            : DecorationImage(
+                image: FileImage(File(thumbnail)),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerLeft,
+                colorFilter: ColorFilter.mode(
+                  color.withAlpha(150),
+                  BlendMode.srcOver,
+                ),
+              ),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: selected ? Colors.white : color.withAlpha(255),

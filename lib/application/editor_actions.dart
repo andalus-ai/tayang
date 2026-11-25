@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/models/media_asset.dart';
+import '../domain/models/project.dart';
 import '../domain/models/track.dart';
 import 'playback_controller.dart';
 import 'project_controller.dart';
@@ -46,6 +47,12 @@ class EditorActions {
   void duplicateSelected() {
     final id = _selectedId;
     if (id != null) _selection.select(_project.duplicateClip(id));
+  }
+
+  void newProject() {
+    _playback.pause();
+    _playback.seek(Duration.zero);
+    _project.replaceProject(Project.empty());
   }
 
   void togglePlay() => _playback.toggle();

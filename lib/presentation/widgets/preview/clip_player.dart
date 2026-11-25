@@ -67,7 +67,7 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
   Future<void> _applyProperties() async {
     final controller = _controller;
     if (controller == null) return;
-    await controller.setVolume(widget.muted ? 0 : widget.clip.volume.clamp(0.0, 1.0));
+    await controller.setVolume(widget.muted ? 0.0 : widget.clip.volume.clamp(0.0, 1.0).toDouble());
     await controller.setPlaybackSpeed(widget.clip.speed);
   }
 
@@ -80,6 +80,10 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     final drift = (controller.value.position - expected).abs();
 
     // Scrubbing (paused) always seeks; while playing only correct real drift.
+    if (widget.clip.hasFades && !widget.muted) {
+      final fade = widget.clip.fadeFactorAt(timeline.position);
+      await controller.setVolume(widget.clip.volume.clamp(0.0, 1.0).toDouble() * fade);
+    }
     if (force || !timeline.isPlaying || drift > _maxDrift) {
       await controller.seekTo(expected);
     }
@@ -107,8 +111,11 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
     if (controller == null || !controller.value.isInitialized) {
       return const SizedBox.shrink();
     }
+    final fade = widget.clip.hasFades
+        ? widget.clip.fadeFactorAt(ref.watch(playbackProvider.select((s) => s.position)))
+        : 1.0;
     return Opacity(
-      opacity: widget.clip.opacity.clamp(0.0, 1.0),
+      opacity: widget.clip.opacity.clamp(0.0, 1.0).toDouble() * fade,
       child: FittedBox(
         fit: BoxFit.contain,
         child: SizedBox(
