@@ -2,6 +2,8 @@
 
 Timeline video editor in Flutter. State: `flutter_riverpod` (Notifier API, no codegen, no freezed).
 
+See the [user guide](docs/USER_GUIDE.md) and [changelog](CHANGELOG.md).
+
 ## Setup
     flutter create . --project-name tayang --org ai.andalus --platforms=android,ios,macos,windows,linux
     flutter pub get && flutter analyze && flutter test && flutter run

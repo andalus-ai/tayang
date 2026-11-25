@@ -7,6 +7,7 @@ import 'app.dart';
 import 'application/di.dart';
 import 'data/logging/file_error_logger.dart';
 import 'data/repositories/json_project_repository.dart';
+import 'data/repositories/json_settings_repository.dart';
 import 'domain/models/project.dart';
 
 Future<void> main() async {
@@ -26,12 +27,16 @@ Future<void> main() async {
 
     final repository = JsonProjectRepository();
     final initial = await repository.loadLatest() ?? Project.empty();
+    final settings = JsonSettingsRepository();
+    final welcomeSeen = await settings.hasSeenWelcome();
 
     runApp(
       ProviderScope(
         overrides: [
           initialProjectProvider.overrideWithValue(initial),
           projectRepositoryProvider.overrideWithValue(repository),
+          settingsRepositoryProvider.overrideWithValue(settings),
+          initialWelcomeSeenProvider.overrideWithValue(welcomeSeen),
         ],
         child: const TayangApp(),
       ),

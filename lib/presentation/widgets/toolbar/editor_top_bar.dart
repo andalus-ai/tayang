@@ -6,6 +6,7 @@ import '../../../application/project_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../common/icon_action_button.dart';
 import '../export/export_dialog.dart';
+import '../help/help_dialog.dart';
 
 class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
   const EditorTopBar({super.key});
@@ -31,6 +32,14 @@ class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        IconActionButton(
+          icon: Icons.help_outline,
+          tooltip: 'Help & shortcuts',
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => const HelpDialog(welcome: false),
+          ),
+        ),
         IconActionButton(
           icon: Icons.note_add_outlined,
           tooltip: 'New project',

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/autosave.dart';
+import '../../application/onboarding_controller.dart';
+import '../widgets/help/help_dialog.dart';
 import '../widgets/inspector/inspector_panel.dart';
 import '../widgets/media/media_bin.dart';
 import '../widgets/preview/preview_panel.dart';
@@ -21,10 +23,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
   static const _compactBreakpoint = 900.0;
 
   late final AppLifecycleListener _lifecycle;
+  bool _bannerDismissed = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ref.read(welcomeProvider)) _showWelcome();
+    });
     // Don't lose edits if the OS kills the app right after it's backgrounded.
     _lifecycle = AppLifecycleListener(
       onStateChange: (state) {
@@ -35,6 +41,14 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         }
       },
     );
+  }
+
+  Future<void> _showWelcome() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => const HelpDialog(welcome: true),
+    );
+    if (mounted) ref.read(welcomeProvider.notifier).dismiss();
   }
 
   @override
@@ -53,8 +67,20 @@ class _EditorPageState extends ConsumerState<EditorPage> {
         body: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < _compactBreakpoint;
+            final engine = ref.watch(engineStatusProvider).valueOrNull;
             return Column(
               children: [
+                if (engine != null && !engine.ready && !_bannerDismissed)
+                  MaterialBanner(
+                    content: Text(engine.message ?? 'FFmpeg is not available.'),
+                    leading: const Icon(Icons.warning_amber_rounded),
+                    actions: [
+                      TextButton(
+                        onPressed: () => setState(() => _bannerDismissed = true),
+                        child: const Text('Dismiss'),
+                      ),
+                    ],
+                  ),
                 Expanded(
                   flex: 5,
                   child: compact
