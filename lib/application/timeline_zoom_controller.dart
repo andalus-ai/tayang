@@ -9,6 +9,13 @@ class TimelineZoomController extends Notifier<double> {
   double build() => 80;
 
   void set(double value) => state = value.clamp(min, max).toDouble();
+  /// Zooms so the whole [duration] fits in [viewportWidth] pixels.
+  void fit(Duration duration, double viewportWidth) {
+    final seconds = duration.inMicroseconds / Duration.microsecondsPerSecond;
+    if (seconds <= 0 || viewportWidth <= 0) return;
+    set(viewportWidth / (seconds + 1));
+  }
+
   void zoomIn() => set(state * 1.25);
   void zoomOut() => set(state / 1.25);
 }

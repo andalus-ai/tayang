@@ -75,6 +75,14 @@ class PlaybackController extends Notifier<PlaybackState> {
     final end = _end;
     final next = _origin + _stopwatch.elapsed;
     if (next >= end) {
+      if (ref.read(loopProvider) && end > Duration.zero) {
+        _origin = Duration.zero;
+        _stopwatch
+          ..reset()
+          ..start();
+        state = state.copyWith(position: Duration.zero);
+        return;
+      }
       pause();
       state = state.copyWith(position: end);
     } else {
@@ -85,3 +93,13 @@ class PlaybackController extends Notifier<PlaybackState> {
 
 final playbackProvider =
     NotifierProvider<PlaybackController, PlaybackState>(PlaybackController.new);
+
+/// Whether playback restarts from the beginning when it reaches the end.
+class LoopController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
+final loopProvider = NotifierProvider<LoopController, bool>(LoopController.new);

@@ -21,7 +21,7 @@ Platform notes: Android needs `minSdkVersion 24`; iOS/macOS need a recent deploy
 
 ## Features
 Multi-track timeline, drag/trim/split/ripple/duplicate, magnetic snapping, text clips, speed, volume, opacity,
-fade in/out, dip transitions, opacity + volume keyframes, scale/position transform, copy/cut/paste, snapping toggle, thumbnails, audio waveforms, undo/redo (gestures = one step), autosave, aspect presets, export (480p–4K), shortcuts
+fade in/out, dip transitions, opacity + volume keyframes, scale/position transform, copy/cut/paste, snapping toggle, loop playback, fit-to-timeline, thumbnails, audio waveforms, undo/redo (gestures = one step), autosave, aspect presets, export (480p–4K), shortcuts
 (Space, S, Del, Shift+Del, ←/→, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D/C/X/V, Ctrl+wheel zoom).
 
 ## Known limits

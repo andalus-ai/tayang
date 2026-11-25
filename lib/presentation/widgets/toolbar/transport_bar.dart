@@ -28,6 +28,7 @@ class TransportBar extends ConsumerWidget {
     final zoom = ref.watch(timelineZoomProvider);
     final zoomController = ref.read(timelineZoomProvider.notifier);
     final snapping = ref.watch(snapEnabledProvider);
+    final looping = ref.watch(loopProvider);
 
     return Container(
       height: 52,
@@ -65,6 +66,12 @@ class TransportBar extends ConsumerWidget {
               icon: Icons.keyboard_arrow_right,
               tooltip: 'Next frame (→)',
               onPressed: () => actions.stepFrames(1),
+            ),
+            IconActionButton(
+              icon: Icons.repeat,
+              tooltip: looping ? 'Loop on' : 'Loop off',
+              selected: looping,
+              onPressed: ref.read(loopProvider.notifier).toggle,
             ),
             IconActionButton(
               icon: Icons.skip_next,
@@ -123,6 +130,14 @@ class TransportBar extends ConsumerWidget {
                 min: TimelineZoomController.min,
                 max: TimelineZoomController.max,
                 onChanged: zoomController.set,
+              ),
+            ),
+            IconActionButton(
+              icon: Icons.fit_screen,
+              tooltip: 'Fit project to timeline',
+              onPressed: () => zoomController.fit(
+                ref.read(projectProvider).duration,
+                MediaQuery.sizeOf(context).width - 200,
               ),
             ),
             IconActionButton(
