@@ -36,10 +36,15 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
 
   ProjectController get _controller => ref.read(projectControllerProvider.notifier);
 
-  void _onMoveStart(TimelineGeometry geo, DragStartDetails d) {
+  /// Pointer touched the clip: remember where inside it, so the clip follows the
+  /// pointer exactly (no lag from the touch-slop distance).
+  void _onPointerDown(TimelineGeometry geo, DragDownDetails d) {
     ref.read(selectionProvider.notifier).select(widget.clip.id);
     _grab = geo.timeAt(d.globalPosition) - widget.clip.start;
   }
+
+  /// Offset between the pointer and the trimmed edge when a handle is grabbed.
+  Duration _trimGrab = Duration.zero;
 
   void _onMoveUpdate(TimelineGeometry geo, DragUpdateDetails d) {
     final project = ref.read(projectProvider);
@@ -83,10 +88,14 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => ref.read(selectionProvider.notifier).select(clip.id),
-              onHorizontalDragStart: locked ? null : (d) => _onMoveStart(geo, d),
+              onHorizontalDragDown: locked ? null : (d) => _onPointerDown(geo, d),
               onHorizontalDragUpdate: locked ? null : (d) => _onMoveUpdate(geo, d),
               onHorizontalDragEnd: locked ? null : (_) => _controller.endGesture(),
               onHorizontalDragCancel: locked ? null : _controller.endGesture,
+              onVerticalDragDown: locked ? null : (d) => _onPointerDown(geo, d),
+              onVerticalDragUpdate: locked ? null : (d) => _onMoveUpdate(geo, d),
+              onVerticalDragEnd: locked ? null : (_) => _controller.endGesture(),
+              onVerticalDragCancel: locked ? null : _controller.endGesture,
               child: _ClipBody(
                 clip: clip,
                 asset: asset,
@@ -103,7 +112,9 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
               bottom: 0,
               width: handleWidth,
               child: _TrimHandle(
-                onDrag: (g) => _controller.trimClipStartLive(clip.id, geo.timeAt(g)),
+                onDown: (g) => _trimGrab = geo.timeAt(g) - widget.clip.start,
+                onDrag: (g) =>
+                    _controller.trimClipStartLive(clip.id, geo.timeAt(g) - _trimGrab),
                 onEnd: _controller.endGesture,
               ),
             ),
@@ -113,7 +124,9 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
               bottom: 0,
               width: handleWidth,
               child: _TrimHandle(
-                onDrag: (g) => _controller.trimClipEndLive(clip.id, geo.timeAt(g)),
+                onDown: (g) => _trimGrab = geo.timeAt(g) - widget.clip.end,
+                onDrag: (g) =>
+                    _controller.trimClipEndLive(clip.id, geo.timeAt(g) - _trimGrab),
                 onEnd: _controller.endGesture,
               ),
             ),
@@ -248,8 +261,9 @@ class _Waveform extends StatelessWidget {
 }
 
 class _TrimHandle extends StatelessWidget {
-  const _TrimHandle({required this.onDrag, required this.onEnd});
+  const _TrimHandle({required this.onDown, required this.onDrag, required this.onEnd});
 
+  final ValueChanged<Offset> onDown;
   final ValueChanged<Offset> onDrag;
   final VoidCallback onEnd;
 
@@ -259,6 +273,7 @@ class _TrimHandle extends StatelessWidget {
       cursor: SystemMouseCursors.resizeLeftRight,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onHorizontalDragDown: (d) => onDown(d.globalPosition),
         onHorizontalDragUpdate: (d) => onDrag(d.globalPosition),
         onHorizontalDragEnd: (_) => onEnd(),
         onHorizontalDragCancel: onEnd,
