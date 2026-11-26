@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/playback_controller.dart';
 import '../../../application/project_controller.dart';
+import '../../../application/timeline_viewport_controller.dart';
 import '../../../application/timeline_zoom_controller.dart';
 import '../common/panel_container.dart';
 import 'clips_layer.dart';
@@ -29,6 +30,28 @@ class _TimelinePanelState extends ConsumerState<TimelinePanel> {
   final _scroll = ScrollController();
   final _lanesKey = GlobalKey();
   double _viewport = 0;
+  String _lastViewportKey = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() => _syncViewport(TimelineScale(ref.read(timelineZoomProvider))));
+  }
+
+  /// Publishes the visible time range in coarse (half-viewport) steps, so clips
+  /// off screen aren't built and scrolling doesn't rebuild on every pixel.
+  void _syncViewport(TimelineScale scale) {
+    if (!_scroll.hasClients || _viewport <= 0) return;
+    final half = _viewport / 2;
+    final bucket = (_scroll.offset / half).floor();
+    final key = '$bucket|${scale.pixelsPerSecond}|${_viewport.round()}';
+    if (key == _lastViewportKey) return;
+    _lastViewportKey = key;
+    ref.read(timelineViewportProvider.notifier).set(TimeRange(
+          scale.toTime(math.max(0.0, (bucket - 2) * half)),
+          scale.toTime((bucket + 5) * half),
+        ));
+  }
 
   @override
   void dispose() {
@@ -63,6 +86,10 @@ class _TimelinePanelState extends ConsumerState<TimelinePanel> {
       playbackProvider.select((s) => s.position),
       (_, position) => _followPlayhead(position, scale),
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncViewport(scale);
+    });
 
     final contentHeight = geometry.rulerHeight + trackIds.length * geometry.laneHeight;
 

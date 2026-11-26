@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/project_controller.dart';
 import '../../../application/selection_controller.dart';
 import '../../../application/thumbnails.dart';
+import '../../../application/timeline_viewport_controller.dart';
 import '../../../application/timeline_zoom_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
@@ -73,6 +74,15 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
     final clip = placement.clip;
     final locked = placement.locked;
     final selected = ref.watch(selectionProvider.select((id) => id == widget.clipId));
+
+    // Culling: clips well outside the visible area build nothing (no layout, no
+    // layers). The selected clip is always kept so an active drag survives
+    // leaving the viewport.
+    final visible = ref.watch(timelineViewportProvider);
+    if (!selected && !visible.overlaps(clip.start, clip.end)) {
+      return const SizedBox.shrink();
+    }
+
     final asset = ref.watch(projectProvider.select((p) => p.assetById(clip.assetId)));
 
     final width = math.max(geo.scale.toDx(clip.duration), 6.0);
@@ -168,7 +178,8 @@ class _ClipBody extends ConsumerWidget {
         ? ref.watch(waveformPathProvider(asset!)).valueOrNull
         : null;
     return Container(
-      clipBehavior: Clip.hardEdge,
+      // No clipBehavior: the decoration clips its own image and the label clips
+      // itself, so we avoid one extra compositing layer per clip.
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: color.withAlpha(dimmed ? 90 : (selected ? 255 : 205)),
