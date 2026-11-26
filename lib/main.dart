@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 
 import 'app.dart';
 import 'application/di.dart';
@@ -15,6 +16,9 @@ Future<void> main() async {
 
   await runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    // video_player has no Windows/Linux backend of its own; this registers one.
+    // (No effect on Android, iOS and macOS, which keep their native players.)
+    VideoPlayerMediaKit.ensureInitialized(windows: true, linux: true);
 
     FlutterError.onError = (details) {
       FlutterError.presentError(details);

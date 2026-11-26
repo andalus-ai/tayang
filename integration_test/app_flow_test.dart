@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tayang/app.dart';
+import 'package:video_player_media_kit/video_player_media_kit.dart';
 import 'package:tayang/application/di.dart';
 import 'package:tayang/application/project_controller.dart';
 import 'package:tayang/data/media/ffprobe_media_probe.dart';
@@ -50,6 +51,7 @@ Future<void> _waitFor(WidgetTester tester, Finder finder, {int seconds = 60}) as
 /// Desktop only: the compact phone layout hides the panels in sheets.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  VideoPlayerMediaKit.ensureInitialized(windows: true, linux: true); // same as main()
 
   testWidgets('import, edit and export through the real UI', (tester) async {
     tester.view.physicalSize = const Size(1600, 1000);
@@ -99,6 +101,11 @@ void main() {
     final rulerTopLeft = tester.getTopLeft(find.byType(TimelineRuler));
     await tester.tapAt(rulerTopLeft + const Offset(80, 14));
     await tester.pump();
+    // The preview must really open the media (no "Media unavailable" on any desktop).
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('Media unavailable'), findsNothing,
+        reason: 'preview backend failed to open the clip');
+
     await tester.tap(find.byTooltip('Split at playhead (S)'));
     await tester.pumpAndSettle();
     expect(clipCount(), 2, reason: 'split at 1s makes two halves');

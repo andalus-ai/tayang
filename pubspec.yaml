@@ -11,6 +11,10 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^2.6.1
   video_player: ^2.9.2
+  # Makes video_player work on Windows + Linux (mpv backend); other platforms keep their native players.
+  video_player_media_kit: ^1.0.6
+  media_kit_libs_windows_video: any
+  media_kit_libs_linux: any
   file_picker: ^10.3.8
   path_provider: ^2.1.5
   path: ^1.9.0

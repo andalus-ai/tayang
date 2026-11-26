@@ -40,7 +40,7 @@ Projects autosave continuously and reopen where you left off. *New project* (top
 | Ctrl/⌘ + scroll | Zoom timeline |
 
 ## Troubleshooting
-- **"FFmpeg tools not found" (Linux):** install FFmpeg (`sudo apt install ffmpeg`) and restart. Windows, macOS, Android and iOS bundle their own.
+- **"FFmpeg tools not found" (Linux):** install FFmpeg (`sudo apt install ffmpeg`) and restart. The Linux preview also needs `libmpv` (`sudo apt install libmpv2`). Windows, macOS, Android and iOS bundle their own.
 - **Media shows a ⛓ icon:** the file moved. Click the icon in the Media panel to relink it; clips stay attached.
 - **Export refuses to start:** relink missing media first; the message lists the files.
 - **Silent or very slow export:** keyframed opacity and 4K are the heaviest options. Use *Draft* quality to preview.
