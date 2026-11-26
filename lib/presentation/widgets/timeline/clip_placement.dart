@@ -1,3 +1,6 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../application/project_controller.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/project.dart';
 
@@ -39,6 +42,23 @@ ClipPlacement? placementOf(Project p, String clipId) {
   }
   return null;
 }
+
+/// One O(n) pass per project change; every clip widget then does an O(1) lookup
+/// (instead of each of n clips scanning all n clips → O(n²)).
+final clipPlacementsProvider = Provider<Map<String, ClipPlacement>>((ref) {
+  final p = ref.watch(projectProvider);
+  return {
+    for (var lane = 0; lane < p.tracks.length; lane++)
+      for (final clip in p.tracks[lane].clips)
+        clip.id: ClipPlacement(
+          clip,
+          lane,
+          p.tracks[lane].isLocked,
+          p.tracks[lane].isLocked ||
+              (!p.tracks[lane].isVisible && p.tracks[lane].hasVisual),
+        ),
+  };
+});
 
 /// The ids of all clips (structure only). Equal while clips are merely moved,
 /// trimmed or edited, so the clips layer doesn't rebuild during a drag.

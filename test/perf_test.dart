@@ -10,6 +10,7 @@ import 'package:tayang/domain/models/project.dart';
 import 'package:tayang/domain/models/track.dart';
 import 'package:tayang/domain/services/timeline_editor.dart';
 import 'package:tayang/presentation/pages/editor_page.dart';
+import 'package:tayang/presentation/widgets/timeline/clip_widget.dart';
 
 import 'support/fakes.dart';
 
@@ -43,20 +44,24 @@ Project _stressProject() {
   return p;
 }
 
-Future<ProviderContainer> _pump(WidgetTester tester) async {
+Future<ProviderContainer> _pump(WidgetTester tester, {Project? project}) async {
   tester.view.physicalSize = const Size(1600, 1000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(ProviderScope(
     overrides: [
       ...fakeOverrides(),
-      initialProjectProvider.overrideWithValue(_stressProject()),
+      initialProjectProvider.overrideWithValue(project ?? _stressProject()),
     ],
     child: const TayangApp(),
   ));
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(EditorPage)));
 }
+
+/// The timeline clip (the preview also uses clip ids as keys).
+Finder _clip(String id) =>
+    find.byWidgetPredicate((w) => w is ClipWidget && w.clipId == id);
 
 void main() {
   testWidgets('PERF playback ticks on a 400-clip project', (tester) async {
@@ -82,10 +87,24 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   });
 
+  testWidgets('PERF baseline: playback ticks on an EMPTY project', (tester) async {
+    final c = await _pump(tester, project: Project.empty());
+    final playback = c.read(playbackProvider.notifier);
+    const ticks = 150;
+    final sw = Stopwatch()..start();
+    for (var i = 0; i < ticks; i++) {
+      playback.seek(Duration(milliseconds: i * 33));
+      await tester.pump();
+    }
+    sw.stop();
+    debugPrint('PERF baseline_tick_ms=${(sw.elapsedMicroseconds / ticks / 1000).toStringAsFixed(2)} (clips=0)');
+    await tester.pump(const Duration(seconds: 3));
+  });
+
   testWidgets('PERF dragging a clip on a 400-clip project', (tester) async {
     final c = await _pump(tester);
     expect(c, isNotNull);
-    final rect = tester.getRect(find.byKey(const ValueKey('c0_3')));
+    final rect = tester.getRect(_clip('c0_3'));
 
     const steps = 60;
     final gesture = await tester.startGesture(rect.center);
@@ -109,7 +128,7 @@ void main() {
     const taps = 20;
     final sw = Stopwatch()..start();
     for (var i = 0; i < taps; i++) {
-      await tester.tap(find.byKey(ValueKey('c0_${i % 3}')));
+      await tester.tap(_clip('c0_${i % 3}'));
       await tester.pump();
     }
     sw.stop();

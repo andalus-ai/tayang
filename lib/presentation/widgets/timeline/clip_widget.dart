@@ -67,7 +67,7 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
     final geo = TimelineScope.of(context);
     // Only THIS clip's data: other edits/drags don't rebuild this widget.
     final placement =
-        ref.watch(projectProvider.select((p) => placementOf(p, widget.clipId)));
+        ref.watch(clipPlacementsProvider.select((m) => m[widget.clipId]));
     if (placement == null) return const SizedBox.shrink();
 
     final clip = placement.clip;
