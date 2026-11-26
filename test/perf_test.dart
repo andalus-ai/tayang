@@ -84,7 +84,7 @@ void main() {
     sw.stop();
     final avg = sw.elapsedMicroseconds / ticks / 1000;
     debugPrint('PERF playback_tick_ms=${avg.toStringAsFixed(2)} (clips=${_tracks * _clipsPerTrack})');
-    expect(avg, lessThan(60), reason: 'average playback tick took ${avg.toStringAsFixed(1)} ms');
+    expect(avg, lessThan(25), reason: 'average playback tick took ${avg.toStringAsFixed(1)} ms');
     await tester.pump(const Duration(seconds: 3));
   });
 
@@ -144,7 +144,7 @@ void main() {
     await tester.pumpAndSettle();
     final avg = sw.elapsedMicroseconds / steps / 1000;
     debugPrint('PERF drag_step_ms=${avg.toStringAsFixed(2)} (clips=${_tracks * _clipsPerTrack})');
-    expect(avg, lessThan(120), reason: 'average drag frame took ${avg.toStringAsFixed(1)} ms');
+    expect(avg, lessThan(40), reason: 'average drag frame took ${avg.toStringAsFixed(1)} ms');
     await tester.pump(const Duration(seconds: 3));
   });
 
