@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart' show debugOnRebuildDirtyWidget;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tayang/app.dart';
@@ -98,6 +99,30 @@ void main() {
     }
     sw.stop();
     debugPrint('PERF baseline_tick_ms=${(sw.elapsedMicroseconds / ticks / 1000).toStringAsFixed(2)} (clips=0)');
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('PERF diagnostic: which widgets rebuild per playback tick', (tester) async {
+    final c = await _pump(tester);
+    final playback = c.read(playbackProvider.notifier);
+    playback.seek(const Duration(seconds: 40));
+    await tester.pump();
+
+    final counts = <String, int>{};
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      counts.update(element.widget.runtimeType.toString(), (n) => n + 1, ifAbsent: () => 1);
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = null);
+
+    const ticks = 10;
+    for (var i = 1; i <= ticks; i++) {
+      playback.seek(Duration(seconds: 40, milliseconds: i * 33));
+      await tester.pump();
+    }
+    debugOnRebuildDirtyWidget = null;
+
+    final top = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    debugPrint('PERF rebuilds_per_tick: ${[for (final e in top.take(12)) '${e.key}=${(e.value / ticks).toStringAsFixed(1)}'].join(', ')}');
     await tester.pump(const Duration(seconds: 3));
   });
 
