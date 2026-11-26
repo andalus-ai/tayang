@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
@@ -130,5 +132,89 @@ void main() {
     expect(result.duration.inMilliseconds, closeTo(3000, 500));
     expect(result.width, 320);
     expect(result.height, 180);
+  }, timeout: const Timeout(Duration(minutes: 5)));
+
+  testWidgets('FFmpegKit renders crossfade and opacity keyframes with correct pixels',
+      (tester) async {
+    final tmp = await getTemporaryDirectory();
+    final root = await Directory('${tmp.path}/tayang_px').create(recursive: true);
+
+    Future<String> write(String name, String b64) async {
+      final file = File('${root.path}/$name');
+      await file.writeAsBytes(base64Decode(b64));
+      return file.path;
+    }
+
+    /// RGB of one pixel of [video] at [seconds], extracted with FFmpegKit itself.
+    Future<List<int>> pixel(String video, double seconds, int x, int y) async {
+      final raw = '${root.path}/px_${seconds}_${x}_$y.raw';
+      final session = await FFmpegKit.executeWithArguments([
+        '-y', '-ss', '$seconds', '-i', video,
+        '-frames:v', '1',
+        '-vf', 'crop=1:1:$x:$y,format=rgb24',
+        '-f', 'rawvideo', raw,
+      ]);
+      expect(ReturnCode.isSuccess(await session.getReturnCode()), isTrue,
+          reason: 'pixel extraction at ${seconds}s');
+      final bytes = await File(raw).readAsBytes();
+      expect(bytes.length, 3);
+      return bytes;
+    }
+
+    final probe = FfprobeMediaProbe();
+    final red = await probe.probe(await write('red.mp4', redVideoBase64));
+    final blue = await probe.probe(await write('blue.mp4', blueVideoBase64));
+    const settings = ExportSettings(height: 180, fps: 15, quality: ExportQuality.draft);
+    const editor = TimelineEditor();
+
+    Future<String> render(Project p, String name) async {
+      final out = '${root.path}/$name.mp4';
+      final events = await FfmpegVideoExporter(fontProvider: FontProvisioner().ensureFont)
+          .export(p, settings, outputPath: out)
+          .toList();
+      final last = events.last;
+      expect(last, isA<ExportDone>(), reason: last is ExportFailed ? last.message : null);
+      return out;
+    }
+
+    Project start(List<dynamic> assets) {
+      var p = const Project(
+        id: 'p',
+        name: 'px',
+        tracks: [Track(id: 'v1', kind: TrackKind.video, name: 'V')],
+      );
+      for (final a in assets) {
+        p = editor.addAsset(p, a as MediaAsset);
+      }
+      return p;
+    }
+
+    // ---- crossfade: red -> mix -> blue
+    var p = start([red, blue]);
+    p = editor.addClipFromAsset(p, red, clipId: 'a', newTrackId: 'x');
+    p = editor.addClipFromAsset(p, blue, clipId: 'b', newTrackId: 'x');
+    p = editor.addCrossfade(p, 'a', const Duration(seconds: 2));
+    final xfade = await render(p, 'xfade');
+
+    final before = await pixel(xfade, 1.0, 160, 90);
+    expect(before[0], greaterThan(200), reason: 'red before overlap: $before');
+    expect(before[2], lessThan(50));
+    final mid = await pixel(xfade, 3.0, 160, 90);
+    expect(mid[0], closeTo(128, 45), reason: 'red fading out: $mid');
+    expect(mid[2], closeTo(128, 45), reason: 'blue fading in: $mid');
+    final after = await pixel(xfade, 5.0, 160, 90);
+    expect(after[2], greaterThan(200), reason: 'blue after overlap: $after');
+    expect(after[0], lessThan(50));
+
+    // ---- keyframed opacity ramp (mask + alphamerge path)
+    p = start([red]);
+    p = editor.addClipFromAsset(p, red, clipId: 'c', newTrackId: 'x');
+    p = editor.setKeyframe(p, 'c', KeyframeProperty.opacity, Duration.zero, 0.0);
+    p = editor.setKeyframe(p, 'c', KeyframeProperty.opacity, const Duration(seconds: 4), 1.0);
+    final ramp = await render(p, 'ramp');
+    for (final t in [1.0, 2.0, 3.0]) {
+      final px = await pixel(ramp, t, 160, 90);
+      expect(px[0], closeTo(255 * t / 4, 45), reason: 'ramp at ${t}s: $px');
+    }
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
