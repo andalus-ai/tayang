@@ -78,15 +78,22 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    final container = ProviderScope.containerOf(tester.element(find.byType(EditorPage)));
+    int clipCount() =>
+        container.read(projectProvider).tracks.expand((t) => t.clips).length;
+
     // ---- import
     await tester.tap(find.byTooltip('Import media'));
     await _waitFor(tester, find.text('v.mp4'));
     await _waitFor(tester, find.text('i.png'));
 
-    // ---- place the video on the timeline (bin tile + timeline clip = 2 labels)
+    expect(container.read(projectProvider).assets.length, 2);
+
+    // ---- place the video on the timeline
     await tester.tap(find.byTooltip('Add to timeline at playhead').first);
     await tester.pumpAndSettle();
-    expect(find.text('v.mp4'), findsNWidgets(2));
+    expect(clipCount(), 1);
+    expect(find.text('v.mp4'), findsWidgets);
 
     // ---- seek to 1s by clicking the ruler (80 px per second), then split
     final rulerTopLeft = tester.getTopLeft(find.byType(TimelineRuler));
@@ -94,24 +101,23 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('Split at playhead (S)'));
     await tester.pumpAndSettle();
-    expect(find.text('v.mp4'), findsNWidgets(3), reason: 'two halves + bin tile');
+    expect(clipCount(), 2, reason: 'split at 1s makes two halves');
 
     // ---- undo / redo
     await tester.tap(find.byTooltip('Undo (Ctrl+Z)'));
     await tester.pumpAndSettle();
-    expect(find.text('v.mp4'), findsNWidgets(2));
+    expect(clipCount(), 1);
     await tester.tap(find.byTooltip('Redo (Ctrl+Shift+Z)'));
     await tester.pumpAndSettle();
-    expect(find.text('v.mp4'), findsNWidgets(3));
+    expect(clipCount(), 2);
 
     // ---- text overlay
     await tester.tap(find.byTooltip('Add text at playhead'));
     await tester.pumpAndSettle();
     expect(find.text('Your text'), findsWidgets);
 
-    final container = ProviderScope.containerOf(tester.element(find.byType(EditorPage)));
+    expect(clipCount(), 3, reason: '2 video halves + text');
     final project = container.read(projectProvider);
-    expect(project.tracks.expand((t) => t.clips).length, 3, reason: '2 video halves + text');
 
     // ---- export through the dialog
     await tester.tap(find.text('Export'));
@@ -129,6 +135,6 @@ void main() {
     expect(exported.duration.inMilliseconds,
         closeTo(project.duration.inMilliseconds, 700));
     expect(exported.hasAudio, isTrue);
-    expect(exported.width, 1920 ~/ 1); // default 1080p export of the 16:9 canvas
+    expect(exported.width, 1920); // default 1080p export of the 16:9 canvas
   }, timeout: const Timeout(Duration(minutes: 8)));
 }
