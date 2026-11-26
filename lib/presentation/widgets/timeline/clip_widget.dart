@@ -11,6 +11,7 @@ import '../../../application/timeline_zoom_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
+import 'clip_placement.dart';
 import 'timeline_geometry.dart';
 
 class ClipWidget extends ConsumerStatefulWidget {
