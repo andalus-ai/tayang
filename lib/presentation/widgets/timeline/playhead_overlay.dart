@@ -20,13 +20,16 @@ class PlayheadOverlay extends ConsumerWidget {
       top: 0,
       bottom: 0,
       width: 12,
-      child: IgnorePointer(
+      // Own paint layer: moving the playhead never repaints the clips below it.
+      child: RepaintBoundary(
+        child: IgnorePointer(
         child: Column(
           children: [
             CustomPaint(size: const Size(12, 10), painter: _HeadPainter()),
             Expanded(child: Container(width: 2, color: AppColors.playhead)),
           ],
         ),
+      ),
       ),
     );
   }

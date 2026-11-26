@@ -109,7 +109,7 @@ void main() {
     const taps = 20;
     final sw = Stopwatch()..start();
     for (var i = 0; i < taps; i++) {
-      await tester.tap(find.byKey(ValueKey('c0_${i % 8}')));
+      await tester.tap(find.byKey(ValueKey('c0_${i % 3}')));
       await tester.pump();
     }
     sw.stop();

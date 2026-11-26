@@ -114,17 +114,21 @@ class _TimelinePanelState extends ConsumerState<TimelinePanel> {
                                 right: 0,
                                 top: 0,
                                 height: geometry.rulerHeight,
-                                child: TimelineRuler(width: contentWidth),
+                                child: RepaintBoundary(
+                                  child: TimelineRuler(width: contentWidth),
+                                ),
                               ),
                               Positioned(
                                 left: 0,
                                 right: 0,
                                 top: geometry.rulerHeight,
-                                child: Column(
-                                  children: [
-                                    for (final id in trackIds)
-                                      TrackLane(key: ValueKey(id), trackId: id),
-                                  ],
+                                child: RepaintBoundary(
+                                  child: Column(
+                                    children: [
+                                      for (final id in trackIds)
+                                        TrackLane(key: ValueKey(id), trackId: id),
+                                    ],
+                                  ),
                                 ),
                               ),
                               Positioned(
@@ -132,7 +136,7 @@ class _TimelinePanelState extends ConsumerState<TimelinePanel> {
                                 right: 0,
                                 top: geometry.rulerHeight,
                                 bottom: 0,
-                                child: const ClipsLayer(),
+                                child: const RepaintBoundary(child: ClipsLayer()),
                               ),
                               const PlayheadOverlay(),
                             ],

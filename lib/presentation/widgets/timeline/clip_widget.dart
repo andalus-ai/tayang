@@ -11,20 +11,12 @@ import '../../../application/timeline_zoom_controller.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
-import '../../../domain/models/track.dart';
 import 'timeline_geometry.dart';
 
 class ClipWidget extends ConsumerStatefulWidget {
-  const ClipWidget({
-    super.key,
-    required this.clip,
-    required this.track,
-    required this.laneIndex,
-  });
+  const ClipWidget({super.key, required this.clipId});
 
-  final TimelineClip clip;
-  final Track track;
-  final int laneIndex;
+  final String clipId;
 
   @override
   ConsumerState<ClipWidget> createState() => _ClipWidgetState();
@@ -34,28 +26,34 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
   /// Time between the clip's start and the pointer when the drag began.
   Duration _grab = Duration.zero;
 
+  /// Offset between the pointer and the trimmed edge when a handle is grabbed.
+  Duration _trimGrab = Duration.zero;
+
   ProjectController get _controller => ref.read(projectControllerProvider.notifier);
+
+  TimelineClip? get _current => ref.read(projectProvider).clipById(widget.clipId);
 
   /// Pointer touched the clip: remember where inside it, so the clip follows the
   /// pointer exactly (no lag from the touch-slop distance).
   void _onPointerDown(TimelineGeometry geo, DragDownDetails d) {
-    ref.read(selectionProvider.notifier).select(widget.clip.id);
-    _grab = geo.timeAt(d.globalPosition) - widget.clip.start;
+    final clip = _current;
+    if (clip == null) return;
+    ref.read(selectionProvider.notifier).select(clip.id);
+    _grab = geo.timeAt(d.globalPosition) - clip.start;
   }
 
-  /// Offset between the pointer and the trimmed edge when a handle is grabbed.
-  Duration _trimGrab = Duration.zero;
-
   void _onMoveUpdate(TimelineGeometry geo, DragUpdateDetails d) {
+    final clip = _current;
+    if (clip == null) return;
     final project = ref.read(projectProvider);
     final lane = geo.laneIndexAt(d.globalPosition, project.tracks.length);
     final hovered = project.tracks[lane];
-    final current = project.trackOfClip(widget.clip.id);
+    final own = project.trackOfClip(clip.id);
     // Hovering a track that can't hold this clip keeps it on its own track.
-    final target = hovered.kind.accepts(widget.clip.kind) ? hovered : current;
+    final target = hovered.kind.accepts(clip.kind) ? hovered : own;
 
     _controller.moveClipLive(
-      widget.clip.id,
+      clip.id,
       geo.timeAt(d.globalPosition) - _grab,
       toTrackId: target?.id,
       snapThreshold:
@@ -66,9 +64,14 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
   @override
   Widget build(BuildContext context) {
     final geo = TimelineScope.of(context);
-    final clip = widget.clip;
-    final locked = widget.track.isLocked;
-    final selected = ref.watch(selectionProvider.select((id) => id == clip.id));
+    // Only THIS clip's data: other edits/drags don't rebuild this widget.
+    final placement =
+        ref.watch(projectProvider.select((p) => placementOf(p, widget.clipId)));
+    if (placement == null) return const SizedBox.shrink();
+
+    final clip = placement.clip;
+    final locked = placement.locked;
+    final selected = ref.watch(selectionProvider.select((id) => id == widget.clipId));
     final asset = ref.watch(projectProvider.select((p) => p.assetById(clip.assetId)));
 
     final width = math.max(geo.scale.toDx(clip.duration), 6.0);
@@ -79,7 +82,7 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
 
     return Positioned(
       left: geo.scale.toDx(clip.start),
-      top: widget.laneIndex * geo.laneHeight + 4,
+      top: placement.lane * geo.laneHeight + 4,
       width: width,
       height: geo.laneHeight - 8,
       child: Stack(
@@ -101,7 +104,7 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
                 asset: asset,
                 label: label,
                 selected: selected,
-                dimmed: locked || !widget.track.isVisible && widget.track.hasVisual,
+                dimmed: placement.dimmed,
               ),
             ),
           ),
@@ -112,7 +115,8 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
               bottom: 0,
               width: handleWidth,
               child: _TrimHandle(
-                onDown: (g) => _trimGrab = geo.timeAt(g) - widget.clip.start,
+                onDown: (g) =>
+                    _trimGrab = geo.timeAt(g) - (_current?.start ?? Duration.zero),
                 onDrag: (g) =>
                     _controller.trimClipStartLive(clip.id, geo.timeAt(g) - _trimGrab),
                 onEnd: _controller.endGesture,
@@ -124,7 +128,8 @@ class _ClipWidgetState extends ConsumerState<ClipWidget> {
               bottom: 0,
               width: handleWidth,
               child: _TrimHandle(
-                onDown: (g) => _trimGrab = geo.timeAt(g) - widget.clip.end,
+                onDown: (g) =>
+                    _trimGrab = geo.timeAt(g) - (_current?.end ?? Duration.zero),
                 onDrag: (g) =>
                     _controller.trimClipEndLive(clip.id, geo.timeAt(g) - _trimGrab),
                 onEnd: _controller.endGesture,
