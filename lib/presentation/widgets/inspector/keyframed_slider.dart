@@ -68,12 +68,14 @@ class KeyframedSlider extends ConsumerWidget {
           },
           onChangeEnd: controller.endGesture,
         ),
-        Row(
+        // Wrap (not Row): the inspector is narrow, so the buttons flow onto a
+        // second line instead of overflowing.
+        Wrap(
           children: [
             TextButton.icon(
               onPressed: () => controller.setKeyframe(clip.id, property, value),
               icon: const Icon(Icons.add, size: 14),
-              label: const Text('Keyframe at playhead'),
+              label: const Text('Add keyframe'),
             ),
             if (animated)
               TextButton(

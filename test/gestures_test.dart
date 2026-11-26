@@ -219,7 +219,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('c2')));
     await tester.pumpAndSettle();
     expect(find.text('INSPECTOR'), findsOneWidget);
-    expect(find.text('Duplicate'), findsOneWidget);
+    expect(find.text('Duration'), findsOneWidget); // info row at the top of the inspector
     await _finish(tester);
   });
 

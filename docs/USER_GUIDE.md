@@ -20,7 +20,7 @@ Projects autosave continuously and reopen where you left off. *New project* (top
 |---|---|
 | Speed (0.25×–4×) | Inspector → Speed |
 | Volume / opacity | Inspector sliders |
-| Keyframes | Move the playhead inside the clip, press **Keyframe at playhead**, then change the slider |
+| Keyframes | Move the playhead inside the clip, press **Add keyframe**, then change the slider |
 | Fade in / out | Inspector → Fade sliders |
 | Dip to black | **Dip to next** fades one clip out and the next in |
 | Crossfade | **Crossfade to next** overlaps two adjacent clips (remove it to move them again) |
