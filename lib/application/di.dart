@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../data/export/export_paths.dart';
 import '../data/export/ffmpeg_runners.dart';
+import '../data/export/font_provisioner.dart';
 import '../data/export/ffmpeg_video_exporter.dart';
 import '../data/export/process_video_exporter.dart';
 import '../data/media/ffmpeg_thumbnail_service.dart';
@@ -53,9 +54,14 @@ final mediaRepositoryProvider = Provider<MediaRepository>(
 final projectRepositoryProvider =
     Provider<ProjectRepository>((ref) => JsonProjectRepository());
 
-final videoExporterProvider = Provider<VideoExporter>(
-  (ref) => _useSystemFfmpeg ? ProcessVideoExporter() : FfmpegVideoExporter(),
-);
+final fontProvisionerProvider = Provider<FontProvisioner>((ref) => FontProvisioner());
+
+final videoExporterProvider = Provider<VideoExporter>((ref) {
+  final font = ref.watch(fontProvisionerProvider).ensureFont;
+  return _useSystemFfmpeg
+      ? ProcessVideoExporter(fontProvider: font)
+      : FfmpegVideoExporter(fontProvider: font);
+});
 
 final thumbnailServiceProvider = Provider<ThumbnailService>(
   (ref) => FfmpegThumbnailService(

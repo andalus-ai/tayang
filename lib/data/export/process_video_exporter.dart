@@ -12,10 +12,13 @@ class ProcessVideoExporter implements VideoExporter {
   ProcessVideoExporter({
     this.executable = 'ffmpeg',
     FfmpegCommandBuilder builder = const FfmpegCommandBuilder(),
-  }) : _builder = builder;
+    Future<String?> Function()? fontProvider,
+  })  : _builder = builder,
+        _fontProvider = fontProvider;
 
   final String executable;
   final FfmpegCommandBuilder _builder;
+  final Future<String?> Function()? _fontProvider;
   Process? _process;
   bool _cancelled = false;
 
@@ -30,7 +33,9 @@ class ProcessVideoExporter implements VideoExporter {
 
     unawaited(() async {
       try {
-        final args = _builder.build(project, settings, outputPath: outputPath);
+        final font = await _fontProvider?.call();
+        final builder = font == null ? _builder : FfmpegCommandBuilder(fontFile: font);
+        final args = builder.build(project, settings, outputPath: outputPath);
         // `-progress` is an output option → must come before the output path.
         final withProgress = [
           ...args.take(args.length - 1),
