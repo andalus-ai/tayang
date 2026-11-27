@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- Hardware-accelerated export (VideoToolbox, MediaCodec, NVENC/Quick Sync/AMF) with automatic software fallback;
+  every export is verified with the media probe, so an encoder that exits 0 with an unusable file (seen with
+  MediaCodec on the Android emulator) falls back to x264 instead of reporting success.
+- Hardware bitrates retuned from measurements: 0.03 / 0.06 / 0.12 bits per pixel (draft / standard / high).
+  On the macOS runner VideoToolbox matched x264-standard quality (SSIM 0.989) at 0.06 bpp, and is up to
+  1.6-2.7x faster than x264 at high quality (720p).
 - Performance: playback ticks on a 400-clip project 29 ms → 8.7 ms (debug, headless): per-clip state selection,
   structure-only clips layer, repaint boundaries, off-screen clip culling. Benchmarks in `test/perf_test.dart`.
 - Export speed (1080p, 6 s, 4-core CI): fades+transform 9.9 s → 3.7 s, picture-in-picture 5.0 s → 3.1 s,

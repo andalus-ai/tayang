@@ -34,14 +34,18 @@ class ExportSettings {
   /// Keeps the project's aspect ratio; H.264 needs even dimensions.
   int widthFor(Project p) => ((height * p.width / p.height) / 2).round() * 2;
 
-  /// Target bitrate (bits/s) for hardware encoders: bits-per-pixel by quality.
+  /// Target bitrate (bits/s) for hardware encoders: bits-per-pixel by quality
+  /// (software x264 uses constant quality instead).
   int bitrateFor(Project p) {
     final override = bitrateOverride;
     if (override != null) return override;
+    // Tuned from measurements (VideoToolbox vs x264, SSIM against the source,
+    // see integration_test/encoder_quality_test.dart): 0.06 bits/pixel matches
+    // x264 "standard" quality (SSIM 0.989); returns diminish above ~0.1.
     final bitsPerPixel = switch (quality) {
-      ExportQuality.draft => 0.05,
-      ExportQuality.standard => 0.09,
-      ExportQuality.high => 0.16,
+      ExportQuality.draft => 0.03,
+      ExportQuality.standard => 0.06,
+      ExportQuality.high => 0.12,
     };
     final bps = (widthFor(p) * height * fps * bitsPerPixel).round();
     return bps < 500000 ? 500000 : (bps > 80000000 ? 80000000 : bps);

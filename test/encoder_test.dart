@@ -101,8 +101,8 @@ void main() {
           lessThan(br(const ExportSettings(quality: ExportQuality.high))));
       expect(br(const ExportSettings(height: 2160)),
           greaterThan(br(const ExportSettings(height: 1080))));
-      // 1080p30 standard ≈ 5.6 Mbit/s
-      expect(br(const ExportSettings()), inInclusiveRange(4000000, 8000000));
+      // 1080p30 standard ≈ 3.7 Mbit/s
+      expect(br(const ExportSettings()), inInclusiveRange(3000000, 5000000));
       expect(br(const ExportSettings(height: 144, fps: 24, quality: ExportQuality.draft)),
           greaterThanOrEqualTo(500000));
     });

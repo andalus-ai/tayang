@@ -30,6 +30,11 @@ fade in/out, dip transitions + true crossfades, picture-in-picture (multi-layer 
 Export renders faster than real time at 1080p (about 0.3–0.75x: a 6 s project takes 2–4.5 s) and about 1–2x real
 time at 4K. UI: a 400-clip timeline ticks in ~7 ms/frame (headless debug). Benchmarks run in CI.
 
+## Encoders
+Export tries the platform's hardware encoder first (VideoToolbox on macOS/iOS, MediaCodec on Android,
+NVENC / Quick Sync / AMF on Windows) and falls back to x264. Results are verified, and the dialog shows which
+encoder was used. `integration_test/encoder_quality_test.dart` measures speed, size and SSIM/PSNR.
+
 ## Known limits
 Keyframed opacity exports via `geq` (per-pixel, slow at 4K). Clips in a crossfade can't be dragged until the crossfade is removed. Text clips have no keyframes/fades in export.
 Not yet compiled by the author, so run `flutter analyze` first (CI does it). Silent videos rely on the probe's audio
