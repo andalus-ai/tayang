@@ -80,39 +80,53 @@ void main() {
       ...EncoderPlanner.current().candidates(hardware: true),
     };
     final lines = <String>[];
+    const height = 720;
 
+    Future<void> measure(VideoEncoder encoder, ExportSettings settings, String tag) async {
+      final out = '${root.path}/${encoder.name}_${tag.replaceAll(RegExp(r'[^\w.]'), '_')}.mp4';
+      final sw = Stopwatch()..start();
+      final events = await FfmpegVideoExporter(
+        fontProvider: FontProvisioner().ensureFont,
+        planner: _Only(encoder),
+        validator: probe,
+      ).export(project, settings, outputPath: out).toList();
+      sw.stop();
+
+      final head = 'QUALITY enc="${encoder.label}" $tag ${height}p';
+      if (events.last is! ExportDone) {
+        lines.add('$head UNAVAILABLE');
+        return;
+      }
+      final seconds = sw.elapsedMicroseconds / 1e6;
+      final bytes = File(out).lengthSync();
+      final (ssim, psnr) = await quality(out, height);
+      lines.add('$head time=${seconds.toStringAsFixed(2)}s '
+          'speed=${(outSeconds / seconds).toStringAsFixed(1)}x '
+          'bitrate=${(bytes * 8 / outSeconds / 1000).round()}kbps '
+          'ssim=${ssim?.toStringAsFixed(4)} psnr=${psnr?.toStringAsFixed(1)}dB');
+      expect(ssim, isNotNull, reason: 'could not measure SSIM for $head');
+      expect(ssim!, greaterThan(0.75), reason: '$head looks badly degraded');
+    }
+
+    final pixelsPerSecond = (height * project.width / project.height) * height * 30;
     for (final encoder in encoders) {
-      for (final q in [ExportQuality.standard, ExportQuality.high]) {
-        final out = '${root.path}/${encoder.name}_${q.name}.mp4';
-        const height = 720;
-        final settings = ExportSettings(height: height, fps: 30, quality: q);
-
-        final sw = Stopwatch()..start();
-        final events = await FfmpegVideoExporter(
-          fontProvider: FontProvisioner().ensureFont,
-          planner: _Only(encoder),
-          validator: probe,
-        ).export(project, settings, outputPath: out).toList();
-        sw.stop();
-
-        final head = 'QUALITY enc="${encoder.label}" q=${q.name} ${height}p';
-        if (events.last is! ExportDone) {
-          lines.add('$head UNAVAILABLE');
-          continue;
+      for (final q in [ExportQuality.draft, ExportQuality.standard, ExportQuality.high]) {
+        await measure(encoder, ExportSettings(height: height, fps: 30, quality: q), 'q=${q.name}');
+      }
+      if (encoder.isHardware) {
+        // Sweep the bitrate to find how few bits the hardware encoder needs to
+        // match x264's quality.
+        for (final bpp in [0.02, 0.03, 0.045, 0.06]) {
+          await measure(
+            encoder,
+            ExportSettings(
+              height: height,
+              fps: 30,
+              bitrateOverride: (pixelsPerSecond * bpp).round(),
+            ),
+            'bpp=$bpp',
+          );
         }
-        final seconds = sw.elapsedMicroseconds / 1e6;
-        final bytes = File(out).lengthSync();
-        final (ssim, psnr) = await quality(out, height);
-        lines.add('$head time=${seconds.toStringAsFixed(2)}s '
-            'speed=${(outSeconds / seconds).toStringAsFixed(1)}x '
-            'size=${(bytes / 1024).round()}KB '
-            'bitrate=${(bytes * 8 / outSeconds / 1000).round()}kbps '
-            'target=${(settings.bitrateFor(project) / 1000).round()}kbps '
-            'ssim=${ssim?.toStringAsFixed(4)} psnr=${psnr?.toStringAsFixed(1)}dB');
-
-        // Anything that claims to be exported must be a sane picture.
-        expect(ssim, isNotNull, reason: 'could not measure SSIM for $head');
-        expect(ssim!, greaterThan(0.75), reason: '$head looks badly degraded');
       }
     }
 

@@ -17,6 +17,7 @@ class ExportSettings {
     this.fps = 30,
     this.quality = ExportQuality.standard,
     this.hardware = true,
+    this.bitrateOverride,
   });
 
   final int height;
@@ -26,11 +27,17 @@ class ExportSettings {
   /// Try the platform's hardware encoder first (falls back to software).
   final bool hardware;
 
+  /// Explicit hardware-encoder bitrate (bits/s); null = derived from [quality].
+  /// Used by the encoder-comparison benchmark.
+  final int? bitrateOverride;
+
   /// Keeps the project's aspect ratio; H.264 needs even dimensions.
   int widthFor(Project p) => ((height * p.width / p.height) / 2).round() * 2;
 
   /// Target bitrate (bits/s) for hardware encoders: bits-per-pixel by quality.
   int bitrateFor(Project p) {
+    final override = bitrateOverride;
+    if (override != null) return override;
     final bitsPerPixel = switch (quality) {
       ExportQuality.draft => 0.05,
       ExportQuality.standard => 0.09,
@@ -40,12 +47,19 @@ class ExportSettings {
     return bps < 500000 ? 500000 : (bps > 80000000 ? 80000000 : bps);
   }
 
-  ExportSettings copyWith({int? height, int? fps, ExportQuality? quality, bool? hardware}) =>
+  ExportSettings copyWith({
+    int? height,
+    int? fps,
+    ExportQuality? quality,
+    bool? hardware,
+    int? bitrateOverride,
+  }) =>
       ExportSettings(
         height: height ?? this.height,
         fps: fps ?? this.fps,
         quality: quality ?? this.quality,
         hardware: hardware ?? this.hardware,
+        bitrateOverride: bitrateOverride ?? this.bitrateOverride,
       );
 }
 
