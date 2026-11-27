@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../core/utils/duration_x.dart';
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/clip.dart';
@@ -69,30 +71,34 @@ class FfmpegCommandBuilder {
         inputs.addAll(_inputArgs(clip, asset));
 
         if (wantsVideo) {
+          final keyed = clip.opacityKeys.isNotEmpty;
+          // The picture is fitted into a box of canvas size x clip.scale in ONE
+          // cheap YUV scale. (Zooming later on RGBA frames was the slowest step:
+          // it doubled export time.)
+          final boxW = math.max(2, (w * clip.scale / 2).floor() * 2);
+          final boxH = math.max(2, (h * clip.scale / 2).floor() * 2);
           final pre = <String>[
             'setpts=(PTS-STARTPTS)/${_n(clip.speed)}+${_s(clip.start)}/TB',
-            'scale=$w:$h:force_original_aspect_ratio=decrease',
+            'scale=$boxW:$boxH:force_original_aspect_ratio=decrease',
             'format=rgba',
-            'pad=$w:$h:(ow-iw)/2:(oh-ih)/2:color=black@0',
+            // Only the animated-opacity mask needs a frame of exactly box size.
+            if (keyed) 'pad=$boxW:$boxH:(ow-iw)/2:(oh-ih)/2:color=black@0',
           ];
           final post = <String>[
-            if ((clip.scale - 1.0).abs() > 0.001)
-              'scale=trunc(iw*${_n(clip.scale)}/2)*2:trunc(ih*${_n(clip.scale)}/2)*2',
             if (clip.fadeIn > Duration.zero)
               'fade=t=in:st=${_s(clip.start)}:d=${_s(clip.fadeIn)}:alpha=1',
             if (clip.fadeOut > Duration.zero)
               'fade=t=out:st=${_s(clip.end - clip.fadeOut)}:d=${_s(clip.fadeOut)}:alpha=1',
-            if (clip.opacityKeys.isEmpty && clip.opacity < 0.999)
+            if (!keyed && clip.opacity < 0.999)
               'colorchannelmixer=aa=${_n(clip.opacity)}',
           ];
           final layer = 'v$index';
-          final position = clip.hasTransform
-              ? ':x=(main_w-overlay_w)/2+${_n(clip.offsetX)}*main_w'
-                  ':y=(main_h-overlay_h)/2+${_n(clip.offsetY)}*main_h'
-              : '';
+          // Always centred explicitly (frames are no longer padded to canvas size).
+          final position = ':x=(main_w-overlay_w)/2+${_n(clip.offsetX)}*main_w'
+              ':y=(main_h-overlay_h)/2+${_n(clip.offsetY)}*main_h';
           final next = 'o${step++}';
 
-          if (clip.opacityKeys.isNotEmpty) {
+          if (keyed) {
             // Animated opacity: a tiny 2x2 gray mask whose brightness follows the
             // keyframes is scaled up and merged in as the alpha channel. This is
             // ~8x faster than a per-pixel `geq` on the picture itself.
@@ -104,7 +110,7 @@ class FfmpegCommandBuilder {
               ..add(
                 'color=c=white:s=2x2:r=$fps:d=${_s(clip.duration)},format=gray,'
                 "geq=lum='clip(255*($mask),0,255)',"
-                'scale=$w:$h:flags=neighbor,setpts=PTS+${_s(clip.start)}/TB[m$index]',
+                'scale=$boxW:$boxH:flags=neighbor,setpts=PTS+${_s(clip.start)}/TB[m$index]',
               )
               ..add('[al$index][m$index]blend=all_mode=multiply[am$index]')
               ..add('[vb$index][am$index]alphamerge$tail[$layer]');
