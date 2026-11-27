@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tayang/data/export/encoder_planner.dart';
 import 'package:tayang/data/export/process_video_exporter.dart';
+import 'package:tayang/domain/export/video_encoder.dart';
 import 'package:tayang/domain/export/video_exporter.dart';
 import 'package:tayang/domain/models/media_asset.dart';
 import 'package:tayang/domain/models/project.dart';
+import 'package:tayang/domain/repositories/media_repository.dart';
 import 'package:tayang/domain/models/track.dart';
 import 'package:tayang/domain/services/timeline_editor.dart';
 
@@ -20,6 +22,7 @@ bool _hasFfmpeg() {
 }
 
 void main() {
+  validationTests();
   final available = _hasFfmpeg();
   const editor = TimelineEditor();
   late Directory dir;
@@ -114,4 +117,88 @@ void main() {
         .toList();
     expect(events.last, isA<ExportFailed>());
   }, skip: skip, timeout: timeout);
+}
+
+/// Two software attempts, so the "first attempt looks invalid" path can be driven
+/// with a fake probe (stands in for a hardware encoder that exits 0 but writes junk).
+class _TwoAttempts extends EncoderPlanner {
+  const _TwoAttempts() : super('linux');
+
+  @override
+  List<VideoEncoder> candidates({required bool hardware}) =>
+      const [VideoEncoder.software, VideoEncoder.software];
+}
+
+class _FlakyProbe implements MediaProbe {
+  _FlakyProbe(this.results);
+  final List<bool> results; // true = valid file
+  int calls = 0;
+
+  @override
+  Future<MediaAsset> probe(String path) async {
+    final valid = results[calls++];
+    return MediaAsset(
+      id: 'o', path: path, name: 'o', kind: MediaKind.video,
+      duration: const Duration(seconds: 2),
+      width: valid ? 640 : null,
+      height: valid ? 360 : null,
+    );
+  }
+}
+
+void validationTests() {
+  final available = _hasFfmpeg();
+  const editor = TimelineEditor();
+
+  Future<(Directory, Project)> setup() async {
+    final dir = await Directory.systemTemp.createTemp('tayang_val_');
+    final src = '${dir.path}/src.mp4';
+    final r = await Process.run('ffmpeg', [
+      '-loglevel', 'error', '-y',
+      '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=30:duration=2',
+      '-f', 'lavfi', '-i', 'sine=frequency=440:duration=2',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', src,
+    ]);
+    expect(r.exitCode, 0);
+    final asset = MediaAsset(
+      id: 'a', path: src, name: 'a', kind: MediaKind.video,
+      duration: const Duration(seconds: 2),
+    );
+    final p = editor.addClipFromAsset(
+      Project(
+        id: 'p', name: 'p', assets: [asset],
+        tracks: const [Track(id: 'v', kind: TrackKind.video, name: 'V')],
+      ),
+      asset, clipId: 'c', newTrackId: 't',
+    );
+    return (dir, p);
+  }
+
+  const settings = ExportSettings(height: 360, quality: ExportQuality.draft);
+
+  test('a file that exits 0 but is unusable triggers the next encoder', () async {
+    final (dir, project) = await setup();
+    addTearDown(() => dir.delete(recursive: true));
+    final probe = _FlakyProbe([false, true]);
+
+    final events = await ProcessVideoExporter(planner: const _TwoAttempts(), validator: probe)
+        .export(project, settings, outputPath: '${dir.path}/o.mp4')
+        .toList();
+
+    expect(events.last, isA<ExportDone>());
+    expect(probe.calls, 2, reason: 'first result rejected, second accepted');
+  }, skip: available ? false : 'ffmpeg not installed', timeout: const Timeout(Duration(minutes: 2)));
+
+  test('if every attempt is unusable the export fails instead of lying', () async {
+    final (dir, project) = await setup();
+    addTearDown(() => dir.delete(recursive: true));
+    final probe = _FlakyProbe([false, false]);
+
+    final events = await ProcessVideoExporter(planner: const _TwoAttempts(), validator: probe)
+        .export(project, settings, outputPath: '${dir.path}/o.mp4')
+        .toList();
+
+    expect(events.last, isA<ExportFailed>());
+    expect((events.last as ExportFailed).message, contains('unusable'));
+  }, skip: available ? false : 'ffmpeg not installed', timeout: const Timeout(Duration(minutes: 2)));
 }

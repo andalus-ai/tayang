@@ -58,9 +58,10 @@ final fontProvisionerProvider = Provider<FontProvisioner>((ref) => FontProvision
 
 final videoExporterProvider = Provider<VideoExporter>((ref) {
   final font = ref.watch(fontProvisionerProvider).ensureFont;
+  final probe = ref.watch(mediaProbeProvider);
   return _useSystemFfmpeg
-      ? ProcessVideoExporter(fontProvider: font)
-      : FfmpegVideoExporter(fontProvider: font);
+      ? ProcessVideoExporter(fontProvider: font, validator: probe)
+      : FfmpegVideoExporter(fontProvider: font, validator: probe);
 });
 
 final thumbnailServiceProvider = Provider<ThumbnailService>(

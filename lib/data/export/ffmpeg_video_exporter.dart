@@ -5,7 +5,9 @@ import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/project.dart';
+import '../../domain/repositories/media_repository.dart';
 import 'encoder_planner.dart';
+import 'export_validation.dart';
 import 'ffmpeg_command_builder.dart';
 
 /// FFmpegKit exporter (Android / iOS / macOS / Windows). Tries the platform's
@@ -15,13 +17,16 @@ class FfmpegVideoExporter implements VideoExporter {
     FfmpegCommandBuilder builder = const FfmpegCommandBuilder(),
     Future<String?> Function()? fontProvider,
     EncoderPlanner? planner,
+    MediaProbe? validator,
   })  : _builder = builder,
         _fontProvider = fontProvider,
-        _planner = planner ?? EncoderPlanner.current();
+        _planner = planner ?? EncoderPlanner.current(),
+        _validator = validator;
 
   final FfmpegCommandBuilder _builder;
   final Future<String?> Function()? _fontProvider;
   final EncoderPlanner _planner;
+  final MediaProbe? _validator;
   bool _cancelled = false;
 
   @override
@@ -45,8 +50,12 @@ class FfmpegVideoExporter implements VideoExporter {
               outputPath: outputPath, encoder: encoder);
           final outcome = await _run(args, totalMs, controller);
           if (outcome.success) {
-            controller.add(ExportDone(outputPath, encoder: encoder.label));
-            return;
+            if (await exportLooksValid(_validator, outputPath, project.duration)) {
+              controller.add(ExportDone(outputPath, encoder: encoder.label));
+              return;
+            }
+            lastLog = '${encoder.label} produced an unusable file.';
+            continue; // e.g. a hardware encoder that "succeeded" with no video
           }
           if (outcome.cancelled || _cancelled) {
             controller.add(const ExportFailed('Export cancelled'));

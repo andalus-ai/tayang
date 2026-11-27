@@ -118,7 +118,10 @@ void main() {
 
     // ---- export through FFmpegKit
     final out = '${root.path}/out.mp4';
-    final events = await FfmpegVideoExporter(fontProvider: FontProvisioner().ensureFont)
+    final events = await FfmpegVideoExporter(
+      fontProvider: FontProvisioner().ensureFont,
+      validator: probe,
+    )
         .export(
           p,
           const ExportSettings(height: 180, fps: 15, quality: ExportQuality.draft),
@@ -171,9 +174,10 @@ void main() {
 
     Future<String> render(Project p, String name) async {
       final out = '${root.path}/$name.mp4';
-      final events = await FfmpegVideoExporter(fontProvider: FontProvisioner().ensureFont)
-          .export(p, settings, outputPath: out)
-          .toList();
+      final events = await FfmpegVideoExporter(
+        fontProvider: FontProvisioner().ensureFont,
+        validator: probe,
+      ).export(p, settings, outputPath: out).toList();
       final last = events.last;
       expect(last, isA<ExportDone>(), reason: last is ExportFailed ? last.message : null);
       return out;

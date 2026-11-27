@@ -4,7 +4,9 @@ import 'dart:io';
 
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/project.dart';
+import '../../domain/repositories/media_repository.dart';
 import 'encoder_planner.dart';
+import 'export_validation.dart';
 import 'ffmpeg_command_builder.dart';
 
 /// Exporter that shells out to a system `ffmpeg` binary (Linux / any desktop
@@ -16,14 +18,17 @@ class ProcessVideoExporter implements VideoExporter {
     FfmpegCommandBuilder builder = const FfmpegCommandBuilder(),
     Future<String?> Function()? fontProvider,
     EncoderPlanner? planner,
+    MediaProbe? validator,
   })  : _builder = builder,
         _fontProvider = fontProvider,
-        _planner = planner ?? EncoderPlanner.current();
+        _planner = planner ?? EncoderPlanner.current(),
+        _validator = validator;
 
   final String executable;
   final FfmpegCommandBuilder _builder;
   final Future<String?> Function()? _fontProvider;
   final EncoderPlanner _planner;
+  final MediaProbe? _validator;
   Process? _process;
   bool _cancelled = false;
 
@@ -47,8 +52,12 @@ class ProcessVideoExporter implements VideoExporter {
               outputPath: outputPath, encoder: encoder);
           final result = await _run(args, project.duration.inMicroseconds, controller);
           if (result.code == 0) {
-            controller.add(ExportDone(outputPath, encoder: encoder.label));
-            return;
+            if (await exportLooksValid(_validator, outputPath, project.duration)) {
+              controller.add(ExportDone(outputPath, encoder: encoder.label));
+              return;
+            }
+            lastLog = '${encoder.label} produced an unusable file.';
+            continue; // e.g. a hardware encoder that "succeeded" with no video
           }
           if (_cancelled) {
             controller.add(const ExportFailed('Export cancelled'));
