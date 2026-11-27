@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
@@ -126,6 +127,7 @@ void main() {
         .toList();
     final last = events.last;
     expect(last, isA<ExportDone>(), reason: last is ExportFailed ? last.message : null);
+    if (last is ExportDone) debugPrint('ENCODER used: ${last.encoder}');
 
     final result = await probe.probe(out);
     expect(result.hasAudio, isTrue);

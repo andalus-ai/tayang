@@ -135,6 +135,8 @@ void main() {
     ));
     await _waitFor(tester, find.textContaining('Export finished'), seconds: 180);
 
+    expect(find.textContaining('Encoded with'), findsOneWidget,
+        reason: 'the dialog reports which encoder was used');
     final path = tester.widget<SelectableText>(find.byType(SelectableText).first).data!;
     expect(File(path).existsSync(), isTrue, reason: 'exported file at $path');
 

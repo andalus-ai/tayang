@@ -16,12 +16,16 @@ class ExportState {
     this.progress = 0,
     this.outputPath,
     this.error,
+    this.encoder,
   });
 
   final ExportStatus status;
   final double progress;
   final String? outputPath;
   final String? error;
+
+  /// Which encoder produced the file (shown when the export finishes).
+  final String? encoder;
 }
 
 class ExportController extends Notifier<ExportState> {
@@ -76,8 +80,11 @@ class ExportController extends Notifier<ExportState> {
       state = switch (event) {
         ExportRunning(:final fraction) =>
           ExportState(status: ExportStatus.running, progress: fraction),
-        ExportDone(:final outputPath) => ExportState(
-            status: ExportStatus.done, progress: 1, outputPath: outputPath),
+        ExportDone(:final outputPath, :final encoder) => ExportState(
+            status: ExportStatus.done,
+            progress: 1,
+            outputPath: outputPath,
+            encoder: encoder),
         ExportFailed(:final message) =>
           ExportState(status: ExportStatus.failed, error: message),
       };

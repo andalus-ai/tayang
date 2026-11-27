@@ -33,6 +33,10 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                 const Text('Export finished. Saved to:'),
                 const SizedBox(height: 8),
                 SelectableText(state.outputPath ?? ''),
+                if (state.encoder != null) ...[
+                  const SizedBox(height: 10),
+                  Text('Encoded with ${state.encoder}'),
+                ],
               ],
             ),
           ExportStatus.failed => SingleChildScrollView(
@@ -106,6 +110,14 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
           selected: {_settings.quality},
           onSelectionChanged: (s) =>
               setState(() => _settings = _settings.copyWith(quality: s.first)),
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Hardware acceleration'),
+          subtitle: const Text('Faster on supported devices; falls back automatically'),
+          value: _settings.hardware,
+          onChanged: (v) => setState(() => _settings = _settings.copyWith(hardware: v)),
         ),
       ],
     );

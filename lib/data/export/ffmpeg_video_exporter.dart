@@ -5,17 +5,24 @@ import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/project.dart';
+import 'encoder_planner.dart';
 import 'ffmpeg_command_builder.dart';
 
+/// FFmpegKit exporter (Android / iOS / macOS / Windows). Tries the platform's
+/// hardware encoder first and falls back to software x264 automatically.
 class FfmpegVideoExporter implements VideoExporter {
   FfmpegVideoExporter({
     FfmpegCommandBuilder builder = const FfmpegCommandBuilder(),
     Future<String?> Function()? fontProvider,
+    EncoderPlanner? planner,
   })  : _builder = builder,
-        _fontProvider = fontProvider;
+        _fontProvider = fontProvider,
+        _planner = planner ?? EncoderPlanner.current();
 
   final FfmpegCommandBuilder _builder;
   final Future<String?> Function()? _fontProvider;
+  final EncoderPlanner _planner;
+  bool _cancelled = false;
 
   @override
   Stream<ExportProgress> export(
@@ -25,47 +32,73 @@ class FfmpegVideoExporter implements VideoExporter {
   }) {
     final controller = StreamController<ExportProgress>();
     final totalMs = project.duration.inMilliseconds;
+    _cancelled = false;
 
     unawaited(() async {
       try {
         final font = await _fontProvider?.call();
         final builder = font == null ? _builder : FfmpegCommandBuilder(fontFile: font);
-        final args = builder.build(project, settings, outputPath: outputPath);
+        var lastLog = '';
 
-        await FFmpegKit.executeWithArgumentsAsync(
-          args,
-          (session) async {
-            final code = await session.getReturnCode();
-            if (controller.isClosed) return;
-            if (ReturnCode.isSuccess(code)) {
-              controller.add(ExportDone(outputPath));
-            } else if (ReturnCode.isCancel(code)) {
-              controller.add(const ExportFailed('Export cancelled'));
-            } else {
-              final log = await session.getOutput() ?? '';
-              final tail = log.length > 700 ? log.substring(log.length - 700) : log;
-              controller.add(ExportFailed(tail.isEmpty ? 'FFmpeg failed' : tail));
-            }
-            await controller.close();
-          },
-          null,
-          (statistics) {
-            if (controller.isClosed || totalMs <= 0) return;
-            final fraction = (statistics.getTime() / totalMs).clamp(0.0, 1.0).toDouble();
-            controller.add(ExportRunning(fraction));
-          },
-        );
-      } catch (e) {
-        if (!controller.isClosed) {
-          controller.add(ExportFailed('$e'));
-          await controller.close();
+        for (final encoder in _planner.candidates(hardware: settings.hardware)) {
+          final args = builder.build(project, settings,
+              outputPath: outputPath, encoder: encoder);
+          final outcome = await _run(args, totalMs, controller);
+          if (outcome.success) {
+            controller.add(ExportDone(outputPath, encoder: encoder.label));
+            return;
+          }
+          if (outcome.cancelled || _cancelled) {
+            controller.add(const ExportFailed('Export cancelled'));
+            return;
+          }
+          lastLog = outcome.log; // try the next encoder (software is always last)
         }
+        final tail = lastLog.length > 700 ? lastLog.substring(lastLog.length - 700) : lastLog;
+        controller.add(ExportFailed(tail.isEmpty ? 'FFmpeg failed' : tail));
+      } catch (e) {
+        controller.add(ExportFailed('$e'));
+      } finally {
+        await controller.close();
       }
     }());
 
     return controller.stream;
   }
 
+  Future<({bool success, bool cancelled, String log})> _run(
+    List<String> args,
+    int totalMs,
+    StreamController<ExportProgress> controller,
+  ) {
+    final done = Completer<({bool success, bool cancelled, String log})>();
+    FFmpegKit.executeWithArgumentsAsync(
+      args,
+      (session) async {
+        final code = await session.getReturnCode();
+        final success = ReturnCode.isSuccess(code);
+        final cancelled = ReturnCode.isCancel(code);
+        final log = success || cancelled ? '' : (await session.getOutput() ?? '');
+        if (!done.isCompleted) {
+          done.complete((success: success, cancelled: cancelled, log: log));
+        }
+      },
+      null,
+      (statistics) {
+        if (controller.isClosed || totalMs <= 0) return;
+        final fraction = (statistics.getTime() / totalMs).clamp(0.0, 1.0).toDouble();
+        controller.add(ExportRunning(fraction));
+      },
+    ).catchError((Object e) {
+      if (!done.isCompleted) done.complete((success: false, cancelled: false, log: '$e'));
+      throw e;
+    });
+    return done.future;
+  }
+
   @override
-  Future<void> cancel() => FFmpegKit.cancel();
+  Future<void> cancel() {
+    _cancelled = true;
+    return FFmpegKit.cancel();
+  }
 }

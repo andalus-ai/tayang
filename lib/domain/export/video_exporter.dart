@@ -16,20 +16,36 @@ class ExportSettings {
     this.height = 1080,
     this.fps = 30,
     this.quality = ExportQuality.standard,
+    this.hardware = true,
   });
 
   final int height;
   final int fps;
   final ExportQuality quality;
 
+  /// Try the platform's hardware encoder first (falls back to software).
+  final bool hardware;
+
   /// Keeps the project's aspect ratio; H.264 needs even dimensions.
   int widthFor(Project p) => ((height * p.width / p.height) / 2).round() * 2;
 
-  ExportSettings copyWith({int? height, int? fps, ExportQuality? quality}) =>
+  /// Target bitrate (bits/s) for hardware encoders: bits-per-pixel by quality.
+  int bitrateFor(Project p) {
+    final bitsPerPixel = switch (quality) {
+      ExportQuality.draft => 0.05,
+      ExportQuality.standard => 0.09,
+      ExportQuality.high => 0.16,
+    };
+    final bps = (widthFor(p) * height * fps * bitsPerPixel).round();
+    return bps < 500000 ? 500000 : (bps > 80000000 ? 80000000 : bps);
+  }
+
+  ExportSettings copyWith({int? height, int? fps, ExportQuality? quality, bool? hardware}) =>
       ExportSettings(
         height: height ?? this.height,
         fps: fps ?? this.fps,
         quality: quality ?? this.quality,
+        hardware: hardware ?? this.hardware,
       );
 }
 
@@ -43,8 +59,11 @@ class ExportRunning extends ExportProgress {
 }
 
 class ExportDone extends ExportProgress {
-  const ExportDone(this.outputPath);
+  const ExportDone(this.outputPath, {this.encoder});
   final String outputPath;
+
+  /// Label of the encoder that produced the file (e.g. "Software (x264)").
+  final String? encoder;
 }
 
 class ExportFailed extends ExportProgress {

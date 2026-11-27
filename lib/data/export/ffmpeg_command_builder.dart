@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../../core/utils/duration_x.dart';
+import '../../domain/export/video_encoder.dart';
 import '../../domain/export/video_exporter.dart';
 import '../../domain/models/clip.dart';
 import '../../domain/models/keyframes.dart';
@@ -22,6 +23,7 @@ class FfmpegCommandBuilder {
     Project project,
     ExportSettings settings, {
     required String outputPath,
+    VideoEncoder encoder = VideoEncoder.software,
   }) {
     final w = settings.widthFor(project);
     final h = settings.height;
@@ -156,9 +158,7 @@ class FfmpegCommandBuilder {
       '-filter_complex', filters.join(';'),
       '-map', '[$last]',
       if (hasAudio) ...['-map', '[aout]'],
-      '-c:v', 'libx264',
-      '-preset', settings.quality.preset,
-      '-crf', '${settings.quality.crf}',
+      ...encoder.args(settings, bitrate: settings.bitrateFor(project)),
       '-pix_fmt', 'yuv420p',
       '-r', '$fps',
       if (hasAudio) ...['-c:a', 'aac', '-b:a', '192k'] else '-an',
