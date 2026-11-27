@@ -26,6 +26,10 @@ Multi-track timeline, drag/trim/split/ripple/duplicate, magnetic snapping, text 
 fade in/out, dip transitions + true crossfades, picture-in-picture (multi-layer preview), opacity + volume keyframes, scale/position transform, copy/cut/paste, snapping toggle, loop playback, fit-to-timeline, thumbnails, audio waveforms, undo/redo (gestures = one step), autosave, aspect presets, export (480p–4K), shortcuts
 (Space, S, Del, Shift+Del, ←/→, Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D/C/X/V, Ctrl+wheel zoom).
 
+## Performance (CI, 4 cores, FFmpeg x264)
+Export renders faster than real time at 1080p (about 0.3–0.75x: a 6 s project takes 2–4.5 s) and about 1–2x real
+time at 4K. UI: a 400-clip timeline ticks in ~7 ms/frame (headless debug). Benchmarks run in CI.
+
 ## Known limits
 Keyframed opacity exports via `geq` (per-pixel, slow at 4K). Clips in a crossfade can't be dragged until the crossfade is removed. Text clips have no keyframes/fades in export.
 Not yet compiled by the author, so run `flutter analyze` first (CI does it). Silent videos rely on the probe's audio

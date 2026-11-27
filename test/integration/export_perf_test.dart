@@ -74,7 +74,8 @@ void main() {
     Project p, {
     int height = 1080,
     ExportQuality quality = ExportQuality.standard,
-    double maxRealtimeFactor = 40,
+    // Regression guard (CI runners vary ~1.6x run to run; typical 1080p is 0.3-0.8x).
+    double maxRealtimeFactor = 2.0,
   }) async {
     final exporter = ProcessVideoExporter(
       fontProvider: () async => File('assets/fonts/DejaVuSans.ttf').absolute.path,
@@ -176,7 +177,7 @@ void main() {
   test('4K plain clip', () {
     final a = asset('a', uhdPath, 4);
     final p = editor.addClipFromAsset(empty([a]), a, clipId: 'c', newTrackId: 'x', trackId: 'v0');
-    return bench('plain', p, height: 2160, quality: ExportQuality.draft, maxRealtimeFactor: 80);
+    return bench('plain', p, height: 2160, quality: ExportQuality.draft, maxRealtimeFactor: 5);
   }, skip: skip, timeout: timeout);
 
   test('4K keyframed opacity + fades', () {
@@ -185,6 +186,6 @@ void main() {
     p = editor.updateClip(p, 'c', (c) => c.copyWith(fadeIn: const Duration(seconds: 1)));
     p = editor.setKeyframe(p, 'c', KeyframeProperty.opacity, Duration.zero, 0.2);
     p = editor.setKeyframe(p, 'c', KeyframeProperty.opacity, const Duration(seconds: 4), 1.0);
-    return bench('keyframed opacity+fade', p, height: 2160, quality: ExportQuality.draft, maxRealtimeFactor: 80);
+    return bench('keyframed opacity+fade', p, height: 2160, quality: ExportQuality.draft, maxRealtimeFactor: 5);
   }, skip: skip, timeout: timeout);
 }
