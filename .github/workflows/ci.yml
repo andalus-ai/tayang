@@ -28,7 +28,7 @@ jobs:
       - name: Test
         run: |
           set +e
-          flutter test > test.txt 2>&1
+          flutter test --exclude-tags screenshots > test.txt 2>&1
           echo $? > test.code
       - name: Report as commit comment
         if: always()

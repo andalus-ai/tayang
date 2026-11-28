@@ -1,0 +1,4 @@
+tags:
+  # Rendered on demand by the "Screenshots" workflow and excluded from normal runs
+  # (`flutter test --exclude-tags screenshots`).
+  screenshots:
