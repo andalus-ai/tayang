@@ -19,7 +19,7 @@ jobs:
       - name: Render screenshots
         run: |
           set +e
-          timeout 420 flutter test --tags screenshots --update-goldens --timeout 120s test/screenshots > shots.txt 2>&1
+          timeout 420 flutter test --tags screenshots --update-goldens --timeout 120s --reporter expanded test/screenshots > shots.txt 2>&1
           echo $? > shots.code
       - name: Report as commit comment
         if: always()

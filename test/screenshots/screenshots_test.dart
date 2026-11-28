@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,18 +128,20 @@ Future<ProviderContainer> _launch(WidgetTester tester, Project project, Size siz
   tester.view.physicalSize = size * pixelRatio;
   tester.view.devicePixelRatio = pixelRatio;
   addTearDown(tester.view.reset);
+  debugPrint('STEP launch: pumpWidget');
   await tester.pumpWidget(ProviderScope(
     overrides: [...fakeOverrides(), initialProjectProvider.overrideWithValue(project)],
     child: const TayangApp(),
   ));
   await tester.pumpAndSettle();
-  // Decode the pictures (real file IO needs real async).
+  debugPrint('STEP launch: settled, precaching');
   final context = tester.element(find.byType(EditorPage));
   await tester.runAsync(() async {
     for (final a in project.assets.where((a) => a.kind == MediaKind.image)) {
       await precacheImage(FileImage(File(a.path)), context);
     }
   });
+  debugPrint('STEP launch: precached');
   final container = ProviderScope.containerOf(context);
   container.read(playbackProvider.notifier).seek(const Duration(milliseconds: 2500));
   await tester.pumpAndSettle();
@@ -173,8 +176,11 @@ void main() {
 
   testWidgets('export dialog', (tester) async {
     await _launch(tester, demo, desktop);
+    debugPrint('STEP export: tapping');
     await tester.tap(find.text('Export'));
+    debugPrint('STEP export: tapped, settling');
     await tester.pumpAndSettle();
+    debugPrint('STEP export: settled');
     await expectLater(find.byType(TayangApp),
         matchesGoldenFile('../../docs/screenshots/export.png'));
     await tester.pump(const Duration(seconds: 3));
