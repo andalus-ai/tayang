@@ -113,7 +113,8 @@ void main() {
       for (final q in [ExportQuality.draft, ExportQuality.standard, ExportQuality.high]) {
         await measure(encoder, ExportSettings(height: height, fps: 30, quality: q), 'q=${q.name}');
       }
-      if (encoder.isHardware) {
+      // Constant-quality VideoToolbox ignores bitrate, so only sweep bitrate-driven encoders.
+      if (encoder.isHardware && encoder != VideoEncoder.videoToolboxQuality) {
         // Sweep the bitrate to find how few bits the hardware encoder needs to
         // match x264's quality.
         for (final bpp in [0.02, 0.03, 0.045, 0.06]) {
