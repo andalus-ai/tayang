@@ -262,7 +262,7 @@ class _ClipInspector extends ConsumerWidget {
   }
 
   List<Widget> _lookSection(ProjectController controller, TextStyle? muted) {
-    void set(TimelineClip Function(TimelineClip) change, {bool live = true}) =>
+    void apply(TimelineClip Function(TimelineClip) change, {bool live = true}) =>
         live
             ? controller.updateClipLive(clip.id, change)
             : controller.updateClip(clip.id, change);
@@ -276,7 +276,7 @@ class _ClipInspector extends ConsumerWidget {
         min: -1,
         max: 1,
         format: (v) => '${v >= 0 ? '+' : ''}${(v * 100).round()}',
-        onChanged: (v) => set((c) => c.copyWith(brightness: v)),
+        onChanged: (v) => apply((c) => c.copyWith(brightness: v)),
         onChangeEnd: controller.endGesture,
       ),
       LabeledSlider(
@@ -285,7 +285,7 @@ class _ClipInspector extends ConsumerWidget {
         min: 0,
         max: 2,
         format: (v) => '${(v * 100).round()}%',
-        onChanged: (v) => set((c) => c.copyWith(contrast: v)),
+        onChanged: (v) => apply((c) => c.copyWith(contrast: v)),
         onChangeEnd: controller.endGesture,
       ),
       LabeledSlider(
@@ -294,7 +294,7 @@ class _ClipInspector extends ConsumerWidget {
         min: 0,
         max: 3,
         format: (v) => '${(v * 100).round()}%',
-        onChanged: (v) => set((c) => c.copyWith(saturation: v)),
+        onChanged: (v) => apply((c) => c.copyWith(saturation: v)),
         onChangeEnd: controller.endGesture,
       ),
       Wrap(
@@ -304,27 +304,27 @@ class _ClipInspector extends ConsumerWidget {
           IconButton(
             tooltip: 'Rotate left',
             icon: const Icon(Icons.rotate_left),
-            onPressed: () => set((c) => c.copyWith(rotation: (c.rotation + 3) % 4), live: false),
+            onPressed: () => apply((c) => c.copyWith(rotation: (c.rotation + 3) % 4), live: false),
           ),
           IconButton(
             tooltip: 'Rotate right',
             icon: const Icon(Icons.rotate_right),
-            onPressed: () => set((c) => c.copyWith(rotation: (c.rotation + 1) % 4), live: false),
+            onPressed: () => apply((c) => c.copyWith(rotation: (c.rotation + 1) % 4), live: false),
           ),
           IconButton(
             tooltip: 'Flip horizontally',
             isSelected: clip.flipH,
             icon: const Icon(Icons.flip),
-            onPressed: () => set((c) => c.copyWith(flipH: !c.flipH), live: false),
+            onPressed: () => apply((c) => c.copyWith(flipH: !c.flipH), live: false),
           ),
           IconButton(
             tooltip: 'Flip vertically',
             isSelected: clip.flipV,
             icon: const RotatedBox(quarterTurns: 1, child: Icon(Icons.flip)),
-            onPressed: () => set((c) => c.copyWith(flipV: !c.flipV), live: false),
+            onPressed: () => apply((c) => c.copyWith(flipV: !c.flipV), live: false),
           ),
           TextButton(
-            onPressed: () => set(
+            onPressed: () => apply(
               (c) => c.copyWith(
                 brightness: 0.0,
                 contrast: 1.0,
