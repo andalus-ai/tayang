@@ -8,6 +8,7 @@ import '../../../core/utils/duration_x.dart';
 import '../../../data/playback/player_pool.dart';
 import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
+import 'clip_effects.dart';
 import 'clip_transform.dart';
 
 /// Plays one timeline clip, slaved to the timeline clock (`playbackProvider`).
@@ -130,12 +131,15 @@ class _ClipPlayerState extends ConsumerState<ClipPlayer> {
       clip: widget.clip,
       child: Opacity(
         opacity: opacity,
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox(
-            width: controller.value.size.width,
-            height: controller.value.size.height,
-            child: VideoPlayer(controller),
+        child: ClipEffects(
+          clip: widget.clip,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: controller.value.size.width,
+              height: controller.value.size.height,
+              child: VideoPlayer(controller),
+            ),
           ),
         ),
       ),

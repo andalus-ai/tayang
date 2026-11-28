@@ -4,6 +4,7 @@ import '../models/keyframes.dart';
 import '../models/media_asset.dart';
 import '../models/project.dart';
 import '../models/track.dart';
+import 'subtitle_parser.dart';
 
 /// Pure, deterministic editing operations: `Project in → Project out`.
 ///
@@ -441,6 +442,40 @@ class TimelineEditor {
             c,
       ]),
     );
+  }
+
+  /// Adds a new text track on top holding one text clip per subtitle cue.
+  /// Cues that overlap the next one are shortened so the track stays valid.
+  Project addSubtitles(
+    Project p,
+    List<SubtitleCue> cues, {
+    required String trackId,
+    required String Function() clipIdFactory,
+    Duration offset = Duration.zero,
+    String name = 'Subtitles',
+  }) {
+    final sorted = [...cues]..sort((a, b) => a.start.compareTo(b.start));
+    final clips = <TimelineClip>[];
+    for (var i = 0; i < sorted.length; i++) {
+      var start = sorted[i].start + offset;
+      var end = sorted[i].end + offset;
+      if (start < Duration.zero) start = Duration.zero;
+      if (i + 1 < sorted.length) {
+        final next = sorted[i + 1].start + offset;
+        if (end > next) end = next;
+      }
+      if (end - start < minClipDuration) continue;
+      clips.add(TimelineClip(
+        id: clipIdFactory(),
+        kind: ClipKind.text,
+        start: start,
+        duration: end - start,
+        text: TextOverlay(content: sorted[i].text, fontSize: 54, y: 0.88),
+      ));
+    }
+    if (clips.isEmpty) return p;
+    final track = Track(id: trackId, kind: TrackKind.text, name: name, clips: clips);
+    return p.copyWith(tracks: [track, ...p.tracks]);
   }
 
   // --------------------------------------------------------------- keyframes

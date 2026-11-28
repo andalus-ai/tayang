@@ -37,6 +37,15 @@ class _MemoryProjectRepository implements ProjectRepository {
 
   @override
   Future<Project?> loadLatest() async => null;
+
+  @override
+  Future<List<ProjectSummary>> list() async => const [];
+
+  @override
+  Future<Project?> load(String id) async => null;
+
+  @override
+  Future<void> delete(String id) async {}
 }
 
 Future<void> _waitFor(WidgetTester tester, Finder finder, {int seconds = 60}) async {

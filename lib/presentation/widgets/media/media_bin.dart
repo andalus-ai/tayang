@@ -7,6 +7,7 @@ import '../../../application/editor_actions.dart';
 import '../../../application/media_import_controller.dart';
 import '../../../application/media_status.dart';
 import '../../../application/project_controller.dart';
+import '../../../application/subtitle_import_controller.dart';
 import '../../../application/thumbnails.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/models/clip.dart';
@@ -35,6 +36,22 @@ class MediaBin extends ConsumerWidget {
     return PanelContainer(
       title: 'Media',
       actions: [
+        IconActionButton(
+          icon: Icons.subtitles_outlined,
+          tooltip: 'Import subtitles (.srt / .vtt)',
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final added = await ref.read(subtitleImportProvider.notifier).importFile();
+            final error = ref.read(subtitleImportProvider).error;
+            if (error != null) {
+              messenger.showSnackBar(SnackBar(content: Text('Subtitle import failed: $error')));
+            } else if (added != null) {
+              messenger.showSnackBar(
+                SnackBar(content: Text('Added $added subtitle${added == 1 ? '' : 's'} on a new track')),
+              );
+            }
+          },
+        ),
         if (importing)
           const Padding(
             padding: EdgeInsets.all(10),

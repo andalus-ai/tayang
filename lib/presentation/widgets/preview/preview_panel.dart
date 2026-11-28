@@ -10,6 +10,7 @@ import '../../../domain/models/clip.dart';
 import '../../../domain/models/media_asset.dart';
 import '../../../domain/models/track.dart';
 import '../common/panel_container.dart';
+import 'clip_effects.dart';
 import 'clip_player.dart';
 import 'clip_transform.dart';
 
@@ -87,10 +88,13 @@ class _ClipLayer extends ConsumerWidget {
         clip: clip,
         child: Opacity(
           opacity: opacity,
-          child: Image.file(
-            File(asset.path),
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const SizedBox.expand(),
+          child: ClipEffects(
+            clip: clip,
+            child: Image.file(
+              File(asset.path),
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.expand(),
+            ),
           ),
         ),
       );

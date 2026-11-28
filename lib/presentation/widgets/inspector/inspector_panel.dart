@@ -203,8 +203,10 @@ class _ClipInspector extends ConsumerWidget {
             onChangeEnd: controller.endGesture,
           ),
         ],
-        if (clip.kind == ClipKind.video || clip.kind == ClipKind.image)
+        if (clip.kind == ClipKind.video || clip.kind == ClipKind.image) ...[
           ..._transformSection(controller, muted),
+          ..._lookSection(controller, muted),
+        ],
         if (clip.kind == ClipKind.text) ..._textSection(controller, muted),
         const Divider(height: 28),
         Wrap(
@@ -257,6 +259,87 @@ class _ClipInspector extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  List<Widget> _lookSection(ProjectController controller, TextStyle? muted) {
+    void set(TimelineClip Function(TimelineClip) change, {bool live = true}) =>
+        live
+            ? controller.updateClipLive(clip.id, change)
+            : controller.updateClip(clip.id, change);
+
+    return [
+      const SizedBox(height: 8),
+      Text('Look', style: muted),
+      LabeledSlider(
+        label: 'Brightness',
+        value: clip.brightness,
+        min: -1,
+        max: 1,
+        format: (v) => '${v >= 0 ? '+' : ''}${(v * 100).round()}',
+        onChanged: (v) => set((c) => c.copyWith(brightness: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      LabeledSlider(
+        label: 'Contrast',
+        value: clip.contrast,
+        min: 0,
+        max: 2,
+        format: (v) => '${(v * 100).round()}%',
+        onChanged: (v) => set((c) => c.copyWith(contrast: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      LabeledSlider(
+        label: 'Saturation',
+        value: clip.saturation,
+        min: 0,
+        max: 3,
+        format: (v) => '${(v * 100).round()}%',
+        onChanged: (v) => set((c) => c.copyWith(saturation: v)),
+        onChangeEnd: controller.endGesture,
+      ),
+      Wrap(
+        spacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          IconButton(
+            tooltip: 'Rotate left',
+            icon: const Icon(Icons.rotate_left),
+            onPressed: () => set((c) => c.copyWith(rotation: (c.rotation + 3) % 4), live: false),
+          ),
+          IconButton(
+            tooltip: 'Rotate right',
+            icon: const Icon(Icons.rotate_right),
+            onPressed: () => set((c) => c.copyWith(rotation: (c.rotation + 1) % 4), live: false),
+          ),
+          IconButton(
+            tooltip: 'Flip horizontally',
+            isSelected: clip.flipH,
+            icon: const Icon(Icons.flip),
+            onPressed: () => set((c) => c.copyWith(flipH: !c.flipH), live: false),
+          ),
+          IconButton(
+            tooltip: 'Flip vertically',
+            isSelected: clip.flipV,
+            icon: const RotatedBox(quarterTurns: 1, child: Icon(Icons.flip)),
+            onPressed: () => set((c) => c.copyWith(flipV: !c.flipV), live: false),
+          ),
+          TextButton(
+            onPressed: () => set(
+              (c) => c.copyWith(
+                brightness: 0.0,
+                contrast: 1.0,
+                saturation: 1.0,
+                rotation: 0,
+                flipH: false,
+                flipV: false,
+              ),
+              live: false,
+            ),
+            child: const Text('Reset look'),
+          ),
+        ],
+      ),
+    ];
   }
 
   List<Widget> _transformSection(ProjectController controller, TextStyle? muted) {

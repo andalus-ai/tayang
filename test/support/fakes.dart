@@ -6,6 +6,8 @@ import 'package:tayang/domain/models/project.dart';
 import 'package:tayang/domain/repositories/media_repository.dart';
 import 'package:tayang/domain/repositories/project_repository.dart';
 import 'package:tayang/domain/repositories/settings_repository.dart';
+import 'package:tayang/domain/repositories/subtitle_source.dart';
+import 'package:tayang/domain/services/subtitle_parser.dart';
 import 'package:tayang/domain/services/engine_check.dart';
 import 'package:tayang/domain/services/thumbnail_service.dart';
 import 'package:tayang/domain/services/waveform_service.dart';
@@ -21,11 +23,43 @@ class FakeWaveforms implements WaveformService {
 }
 
 class FakeProjectRepository implements ProjectRepository {
+  FakeProjectRepository([List<Project> projects = const []])
+      : stored = {for (final p in projects) p.id: p};
+
+  final Map<String, Project> stored;
+
   @override
-  Future<void> save(Project project) async {}
+  Future<void> save(Project project) async => stored[project.id] = project;
 
   @override
   Future<Project?> loadLatest() async => null;
+
+  @override
+  Future<List<ProjectSummary>> list() async => [
+        for (final p in stored.values)
+          ProjectSummary(
+            id: p.id,
+            name: p.name,
+            modified: DateTime(2026, 11, 28, 10, 30),
+            duration: p.duration,
+            clipCount: p.tracks.fold(0, (n, t) => n + t.clips.length),
+            assetCount: p.assets.length,
+          ),
+      ];
+
+  @override
+  Future<Project?> load(String id) async => stored[id];
+
+  @override
+  Future<void> delete(String id) async => stored.remove(id);
+}
+
+class FakeSubtitleSource implements SubtitleSource {
+  FakeSubtitleSource(this.cues);
+  final List<SubtitleCue>? cues;
+
+  @override
+  Future<List<SubtitleCue>?> pick() async => cues;
 }
 
 class FakeProbe implements MediaProbe {
@@ -68,11 +102,14 @@ List<Override> fakeOverrides({
   bool welcomeSeen = true,
   EngineStatus engine = const EngineStatus.ready(),
   FakeSettings? settings,
+  FakeProjectRepository? projects,
+  FakeSubtitleSource? subtitles,
 }) =>
     [
       thumbnailServiceProvider.overrideWithValue(FakeThumbnails()),
       waveformServiceProvider.overrideWithValue(FakeWaveforms()),
-      projectRepositoryProvider.overrideWithValue(FakeProjectRepository()),
+      projectRepositoryProvider.overrideWithValue(projects ?? FakeProjectRepository()),
+      subtitleSourceProvider.overrideWithValue(subtitles ?? FakeSubtitleSource(null)),
       mediaProbeProvider.overrideWithValue(FakeProbe()),
       videoExporterProvider.overrideWithValue(FakeExporter()),
       engineCheckProvider.overrideWithValue(FakeEngineCheck(engine)),

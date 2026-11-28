@@ -7,18 +7,39 @@ import '../../../core/theme/app_theme.dart';
 import '../common/icon_action_button.dart';
 import '../export/export_dialog.dart';
 import '../help/help_dialog.dart';
+import '../projects/projects_dialog.dart';
+
+enum _MenuAction { projects, newProject, help }
 
 class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
   const EditorTopBar({super.key});
 
+  static const compactWidth = 700.0;
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  void _export(BuildContext context) => showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const ExportDialog(),
+      );
+
+  void _projects(BuildContext context) =>
+      showDialog<void>(context: context, builder: (_) => const ProjectsDialog());
+
+  void _help(BuildContext context) => showDialog<void>(
+        context: context,
+        builder: (_) => const HelpDialog(welcome: false),
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final actions = ref.read(editorActionsProvider);
     final canUndo = ref.watch(canUndoProvider);
     final canRedo = ref.watch(canRedoProvider);
+    // On a phone five icons + the title don't fit: fold the rarely used ones into a menu.
+    final compact = MediaQuery.sizeOf(context).width < compactWidth;
 
     return AppBar(
       titleSpacing: 14,
@@ -26,25 +47,31 @@ class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
         children: [
           const Icon(Icons.movie_filter_outlined, color: AppColors.accent),
           const SizedBox(width: 8),
-          Text('Tayang', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(width: 16),
+          if (!compact) ...[
+            Text('Tayang', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(width: 16),
+          ],
           const Flexible(child: _ProjectName()),
         ],
       ),
       actions: [
-        IconActionButton(
-          icon: Icons.help_outline,
-          tooltip: 'Help & shortcuts',
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) => const HelpDialog(welcome: false),
+        if (!compact) ...[
+          IconActionButton(
+            icon: Icons.help_outline,
+            tooltip: 'Help & shortcuts',
+            onPressed: () => _help(context),
           ),
-        ),
-        IconActionButton(
-          icon: Icons.note_add_outlined,
-          tooltip: 'New project',
-          onPressed: () => _confirmNew(context, actions.newProject),
-        ),
+          IconActionButton(
+            icon: Icons.folder_open_outlined,
+            tooltip: 'Projects',
+            onPressed: () => _projects(context),
+          ),
+          IconActionButton(
+            icon: Icons.note_add_outlined,
+            tooltip: 'New project',
+            onPressed: () => _confirmNew(context, actions.newProject),
+          ),
+        ],
         IconActionButton(
           icon: Icons.undo,
           tooltip: 'Undo (Ctrl+Z)',
@@ -56,16 +83,33 @@ class EditorTopBar extends ConsumerWidget implements PreferredSizeWidget {
           onPressed: canRedo ? actions.redo : null,
         ),
         const SizedBox(width: 8),
-        FilledButton.icon(
-          onPressed: () => showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const ExportDialog(),
+        if (compact)
+          IconButton.filled(
+            tooltip: 'Export',
+            onPressed: () => _export(context),
+            icon: const Icon(Icons.ios_share, size: 20),
+          )
+        else
+          FilledButton.icon(
+            onPressed: () => _export(context),
+            icon: const Icon(Icons.ios_share, size: 18),
+            label: const Text('Export'),
           ),
-          icon: const Icon(Icons.ios_share, size: 18),
-          label: const Text('Export'),
-        ),
-        const SizedBox(width: 12),
+        if (compact)
+          PopupMenuButton<_MenuAction>(
+            tooltip: 'More',
+            onSelected: (action) => switch (action) {
+              _MenuAction.projects => _projects(context),
+              _MenuAction.newProject => _confirmNew(context, actions.newProject),
+              _MenuAction.help => _help(context),
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: _MenuAction.projects, child: Text('Projects')),
+              PopupMenuItem(value: _MenuAction.newProject, child: Text('New project')),
+              PopupMenuItem(value: _MenuAction.help, child: Text('Help & shortcuts')),
+            ],
+          ),
+        SizedBox(width: compact ? 4 : 12),
       ],
     );
   }

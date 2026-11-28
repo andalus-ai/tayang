@@ -81,7 +81,12 @@ class FfmpegCommandBuilder {
           final boxH = math.max(2, (h * clip.scale / 2).floor() * 2);
           final pre = <String>[
             'setpts=(PTS-STARTPTS)/${_n(clip.speed)}+${_s(clip.start)}/TB',
+            // Rotate/flip first so the fit below uses the rotated size.
+            ..._geometry(clip),
             'scale=$boxW:$boxH:force_original_aspect_ratio=decrease',
+            if (clip.hasLook)
+              'eq=brightness=${_n(clip.brightness)}:contrast=${_n(clip.contrast)}'
+                  ':saturation=${_n(clip.saturation)}',
             'format=rgba',
             // Only the animated-opacity mask needs a frame of exactly box size.
             if (keyed) 'pad=$boxW:$boxH:(ow-iw)/2:(oh-ih)/2:color=black@0',
@@ -196,6 +201,18 @@ class FfmpegCommandBuilder {
     }
     return 'if(lt($t,${_s(origin + pts.first.time)}),${_n(pts.first.value)},$expr)';
   }
+
+  /// Clockwise quarter turns, then mirroring (applied in view space).
+  List<String> _geometry(TimelineClip clip) => [
+        switch (clip.rotation % 4) {
+          1 => 'transpose=1',
+          2 => 'hflip,vflip',
+          3 => 'transpose=2',
+          _ => '',
+        },
+        if (clip.flipH) 'hflip',
+        if (clip.flipV) 'vflip',
+      ].where((f) => f.isNotEmpty).toList();
 
   /// `atempo` only accepts 0.5–2.0, so chain it for extreme speeds.
   List<String> _atempo(double speed) {

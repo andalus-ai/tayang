@@ -7,6 +7,7 @@ import '../domain/models/keyframes.dart';
 import '../domain/models/media_asset.dart';
 import '../domain/models/project.dart';
 import '../domain/models/track.dart';
+import '../domain/services/subtitle_parser.dart';
 import '../domain/services/timeline_editor.dart';
 import 'di.dart';
 import 'playback_controller.dart';
@@ -205,6 +206,21 @@ class ProjectController extends Notifier<History<Project>> {
     final id = newId('clip_');
     _commit(_editor.duplicateClip(_project, clipId, newClipId: id));
     return id;
+  }
+
+  /// Adds a subtitle track from parsed cues; returns how many clips were created.
+  int importSubtitles(List<SubtitleCue> cues, {Duration offset = Duration.zero}) {
+    final trackId = newId('track_');
+    final next = _editor.addSubtitles(
+      _project,
+      cues,
+      trackId: trackId,
+      clipIdFactory: () => newId('clip_'),
+      offset: offset,
+    );
+    final count = next.trackById(trackId)?.clips.length ?? 0;
+    _commit(next);
+    return count;
   }
 
   // ----------------------------------------------------------------- tracks
