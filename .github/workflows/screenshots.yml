@@ -8,6 +8,7 @@ permissions:
 jobs:
   screenshots:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -16,7 +17,21 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Render screenshots
-        run: flutter test --tags screenshots --update-goldens test/screenshots
+        run: |
+          set +e
+          timeout 420 flutter test --tags screenshots --update-goldens --timeout 120s test/screenshots > shots.txt 2>&1
+          echo $? > shots.code
+      - name: Report as commit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          {
+            echo "### screenshots (exit $(cat shots.code 2>/dev/null))"
+            echo '```'; head -c 2500 shots.txt 2>/dev/null; echo; echo '[...]'; tail -c 9000 shots.txt 2>/dev/null; echo '```'
+          } > shots.md
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@shots.md || true
       - name: Commit screenshots
         run: |
           git config user.name "github-actions[bot]"
