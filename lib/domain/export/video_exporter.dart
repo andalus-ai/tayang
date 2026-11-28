@@ -1,14 +1,18 @@
 import '../models/project.dart';
 
 enum ExportQuality {
-  draft('Draft', 30, 'ultrafast'),
-  standard('Standard', 23, 'veryfast'),
-  high('High', 18, 'medium');
+  // crf/preset drive x264. hardwareQuality is VideoToolbox's constant-quality
+  // value (0-100), matched to x264's SSIM at crf 28 / 23 / 18 across screen text,
+  // flat animation and graded footage (integration_test/encoder_content_test.dart).
+  draft('Draft', 30, 'ultrafast', 45),
+  standard('Standard', 23, 'veryfast', 60),
+  high('High', 18, 'medium', 72);
 
-  const ExportQuality(this.label, this.crf, this.preset);
+  const ExportQuality(this.label, this.crf, this.preset, this.hardwareQuality);
   final String label;
   final int crf;
   final String preset;
+  final int hardwareQuality;
 }
 
 class ExportSettings {

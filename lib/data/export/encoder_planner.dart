@@ -15,7 +15,11 @@ class EncoderPlanner {
   List<VideoEncoder> candidates({required bool hardware}) {
     if (!hardware) return const [VideoEncoder.software];
     return switch (platform) {
-      'macos' || 'ios' => const [VideoEncoder.videoToolbox, VideoEncoder.software],
+      'macos' || 'ios' => const [
+          VideoEncoder.videoToolboxQuality,
+          VideoEncoder.videoToolbox,
+          VideoEncoder.software,
+        ],
       'android' => const [VideoEncoder.mediaCodec, VideoEncoder.software],
       'windows' => const [
           VideoEncoder.nvenc,

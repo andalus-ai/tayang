@@ -4,7 +4,10 @@
 - Hardware-accelerated export (VideoToolbox, MediaCodec, NVENC/Quick Sync/AMF) with automatic software fallback;
   every export is verified with the media probe, so an encoder that exits 0 with an unusable file (seen with
   MediaCodec on the Android emulator) falls back to x264 instead of reporting success.
-- Hardware bitrates retuned from measurements: 0.03 / 0.06 / 0.12 bits per pixel (draft / standard / high).
+- VideoToolbox now uses constant-quality mode (`-q:v` 45 / 60 / 72), matched to x264 CRF 28 / 23 / 18. Measured on
+  screen text, flat animation and graded footage: SSIM stays within ~0.002 across content types (fixed bitrate
+  varied by ~0.006 and needed 2-2.6x x264's bits on screen content). Bitrate mode remains the fallback (Intel Macs).
+- Hardware bitrates for the other encoders retuned from measurements: 0.03 / 0.06 / 0.12 bits per pixel (draft / standard / high).
   On the macOS runner VideoToolbox matched x264-standard quality (SSIM 0.989) at 0.06 bpp, and is up to
   1.6-2.7x faster than x264 at high quality (720p).
 - Performance: playback ticks on a 400-clip project 29 ms → 8.7 ms (debug, headless): per-clip state selection,

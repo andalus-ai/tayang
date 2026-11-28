@@ -26,9 +26,14 @@ void main() {
     List<VideoEncoder> plan(String os, {bool hw = true}) =>
         EncoderPlanner(os).candidates(hardware: hw);
 
-    test('Apple platforms try VideoToolbox then software', () {
-      expect(plan('macos'), [VideoEncoder.videoToolbox, VideoEncoder.software]);
-      expect(plan('ios'), [VideoEncoder.videoToolbox, VideoEncoder.software]);
+    test('Apple platforms try VideoToolbox quality mode, then bitrate mode, then software', () {
+      const expected = [
+        VideoEncoder.videoToolboxQuality,
+        VideoEncoder.videoToolbox,
+        VideoEncoder.software,
+      ];
+      expect(plan('macos'), expected);
+      expect(plan('ios'), expected);
     });
 
     test('Android tries MediaCodec then software', () {
@@ -74,14 +79,31 @@ void main() {
       expect(c, isNot(contains('-b:v')));
     });
 
-    test('hardware encoders are bitrate driven (no CRF / x264 preset)', () {
+    test('hardware encoders never use x264 options', () {
       for (final e in VideoEncoder.values.where((e) => e.isHardware)) {
         final c = cmd(e);
         expect(c, contains('-c:v ${e.ffmpegName}'), reason: e.name);
-        expect(c, contains('-b:v'), reason: e.name);
         expect(c, isNot(contains('-crf')), reason: e.name);
         expect(c, isNot(contains('libx264')), reason: e.name);
       }
+    });
+
+    test('bitrate-driven hardware encoders pass -b:v', () {
+      for (final e in VideoEncoder.values
+          .where((e) => e.isHardware && e != VideoEncoder.videoToolboxQuality)) {
+        expect(cmd(e), contains('-b:v'), reason: e.name);
+      }
+    });
+
+    test('VideoToolbox quality mode passes -q:v matched to the quality level', () {
+      String q(ExportQuality quality) => const FfmpegCommandBuilder()
+          .build(project, ExportSettings(quality: quality), outputPath: 'o.mp4',
+              encoder: VideoEncoder.videoToolboxQuality)
+          .join(' ');
+      expect(q(ExportQuality.draft), contains('-q:v 45'));
+      expect(q(ExportQuality.standard), contains('-q:v 60'));
+      expect(q(ExportQuality.high), contains('-q:v 72'));
+      expect(q(ExportQuality.standard), isNot(contains('-b:v')));
     });
 
     test('default builder encoder stays software', () {

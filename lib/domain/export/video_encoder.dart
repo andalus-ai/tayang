@@ -5,7 +5,11 @@ import 'video_exporter.dart';
 /// falls back to [software].
 enum VideoEncoder {
   software('Software (x264)', 'libx264', false),
-  videoToolbox('Apple VideoToolbox', 'h264_videotoolbox', true),
+  /// Constant-quality mode (content adaptive, like x264's CRF). Apple Silicon only.
+  videoToolboxQuality('Apple VideoToolbox', 'h264_videotoolbox', true),
+
+  /// Bitrate mode: fallback where constant quality is unavailable (Intel Macs).
+  videoToolbox('Apple VideoToolbox (bitrate)', 'h264_videotoolbox', true),
   mediaCodec('Android MediaCodec', 'h264_mediacodec', true),
   nvenc('NVIDIA NVENC', 'h264_nvenc', true),
   quickSync('Intel Quick Sync', 'h264_qsv', true),
@@ -17,13 +21,18 @@ enum VideoEncoder {
   final String ffmpegName;
   final bool isHardware;
 
-  /// FFmpeg output arguments selecting this encoder. Hardware encoders are
-  /// bitrate-driven; x264 uses constant quality (CRF).
-  List<String> args(ExportSettings settings, {required int bitrate}) => isHardware
-      ? ['-c:v', ffmpegName, '-b:v', '$bitrate']
-      : [
+  /// FFmpeg output arguments selecting this encoder. x264 and VideoToolbox's
+  /// quality mode are constant-quality; other hardware encoders are bitrate driven.
+  List<String> args(ExportSettings settings, {required int bitrate}) {
+    if (this == videoToolboxQuality) {
+      return ['-c:v', ffmpegName, '-q:v', '${settings.quality.hardwareQuality}'];
+    }
+    return isHardware
+        ? ['-c:v', ffmpegName, '-b:v', '$bitrate']
+        : [
           '-c:v', 'libx264',
           '-preset', settings.quality.preset,
           '-crf', '${settings.quality.crf}',
         ];
+  }
 }
